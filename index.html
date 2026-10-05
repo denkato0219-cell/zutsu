@@ -49,6 +49,50 @@ header select{width:auto;padding:6px 10px;min-height:38px}
 section{margin-top:28px}
 h2{font-size:1rem;margin:0 0 10px;font-weight:700}
 
+/* weather */
+:root{--rise:#6B5BC4;--temp:#D9822B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--rise:#A99BFF;--temp:#F0A55A}}
+:root[data-theme="dark"]{--rise:#A99BFF;--temp:#F0A55A}
+.nowrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.nowrow .ic{font-size:2.6rem;line-height:1}
+.nowrow .lb{font-size:.95rem;color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.92rem}
+.facts span{white-space:nowrap}
+.facts b{font-weight:700}
+.readout{margin-top:14px;padding:10px 12px;border-radius:12px;background:var(--soft);font-size:.92rem;min-height:4.4em}
+.readout .rt{font-weight:700}
+.readout .rt small{font-weight:500;color:var(--muted);margin-left:6px}
+.chartwrap{position:relative;margin-top:8px}
+.scroller{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
+.scroller::-webkit-scrollbar{display:none}
+.scroller svg{display:block}
+.centerline{position:absolute;left:50%;top:0;bottom:22px;width:2px;margin-left:-1px;background:var(--ink);opacity:.55;pointer-events:none;border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.78rem;color:var(--muted);margin-top:4px;align-items:center}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.alerts{list-style:none;margin:12px 0 0;padding:0}
+.alerts li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.alerts .ai{width:1.6em;text-align:center;font-weight:700;flex:none}
+.alerts .ai.drop{color:var(--warn)}.alerts .ai.rise{color:var(--rise)}
+.alerts .aw{font-size:.82rem;color:var(--muted)}
+.chkrow{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.chkrow input{width:22px;height:22px;accent-color:var(--accent)}
+.topic{display:flex;gap:8px;align-items:center;margin:8px 0}
+.topic code{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.95rem;word-break:break-all}
+ol.steps{padding-left:1.4em;margin:8px 0}
+ol.steps li{margin-bottom:4px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+/* levels */
+.lvl{display:inline-block;padding:3px 12px;border-radius:999px;font-weight:700;color:#fff;font-size:.95rem}
+.lvl.l2{color:#2A1E00}
+.scale{display:flex;gap:3px;margin:8px 0 6px;max-width:320px}
+.scale span{flex:1;text-align:center;font-size:.72rem;padding:3px 0;border-radius:6px;background:var(--soft);color:var(--muted)}
+.scale span.on{color:#fff;font-weight:700}
+.scale span.on.l2{color:#2A1E00}
+.tagl{font-size:.75rem;font-weight:700;padding:1px 6px;border-radius:6px;color:#fff;margin-right:4px;vertical-align:1px}
+.tagl.l2{color:#2A1E00}
+details.crit{margin-top:6px;font-size:.82rem;color:var(--muted)}
+details.crit summary{cursor:pointer;min-height:32px;display:flex;align-items:center}
+details.crit p{margin:4px 0}
 /* pressure hero */
 .sky{background:var(--surface);border-radius:18px;padding:18px 16px 10px;border:1px solid var(--line)}
 .now{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
@@ -157,8 +201,24 @@ h2{font-size:1rem;margin:0 0 10px;font-weight:700}
     <select id="city" aria-label="気圧を見る地域"></select>
   </header>
 
-  <div class="sky" id="sky">
-    <div class="offline">気圧データを読み込んでいます…</div>
+  <div class="sky">
+    <div id="now"><div class="offline">天気を読み込んでいます…</div></div>
+    <div id="chartArea" hidden>
+      <div class="readout" id="readout"></div>
+      <div class="chartwrap">
+        <div class="scroller" id="scroller"><div id="chartInner"></div></div>
+        <div class="centerline"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>気圧</span>
+        <span><i style="background:var(--warn)"></i>下降</span>
+        <span><i style="background:var(--rise)"></i>上昇</span>
+        <span><i style="background:var(--temp)"></i>気温</span>
+        <button class="refresh" id="toNow" style="margin-left:auto">いまに戻る</button>
+      </div>
+      <p class="note">グラフを左右にスライドすると、真ん中の線の時刻の数値が上に出ます。</p>
+      <ul class="alerts" id="alerts"></ul>
+    </div>
   </div>
 
   <div id="ongoing"></div>
@@ -185,6 +245,11 @@ h2{font-size:1rem;margin:0 0 10px;font-weight:700}
       <input type="text" id="regDose" placeholder="いつもの量" aria-label="いつもの量">
       <button class="btn primary" id="regAdd" style="grid-column:1/-1">登録する</button>
     </div>
+  </section>
+
+  <section>
+    <h2>通知</h2>
+    <div id="notifyBody"></div>
   </section>
 
   <section>
@@ -303,13 +368,13 @@ const AREAS=['頭頂部','前頭部','右こめかみ','左こめかみ','右目
 const COLORS=['#F4D58D','#F2C46B','#EEAE57','#E8964F','#DE7C4E','#CF6450','#BA4F57','#A1405D','#86365F','#6B2C5C'];
 const ILABEL=n=>n<=3?'軽い（普段どおり動ける）':n<=6?'中くらい（作業がつらい）':n<=8?'強い（休みたい）':'とても強い（動けない）';
 const CITIES={
+  here:{name:'現在地',lat:null,lon:null},
   kitakyushu:{name:'北九州',lat:33.8835,lon:130.8752},
   fukuoka:{name:'福岡',lat:33.5902,lon:130.4017},
   shimonoseki:{name:'下関',lat:33.9578,lon:130.9414},
   oita:{name:'大分',lat:33.2382,lon:131.6126},
   osaka:{name:'大阪',lat:34.6937,lon:135.5023},
-  tokyo:{name:'東京',lat:35.6812,lon:139.7671},
-  here:{name:'現在地',lat:null,lon:null}
+  tokyo:{name:'東京',lat:35.6812,lon:139.7671}
 };
 const state={records:[],settings:{city:'kitakyushu'},weather:null,store:null,editing:null};
 
@@ -337,101 +402,405 @@ function startLocal(){
   try{Object.assign(state.settings,JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){}
 }
 /* ---------- weather ---------- */
-const WKEY='headache-weather-cache';
+const WKEY='headache-weather-v2';
+const HOUR=3600e3;
+function S(){return state.settings}
+function NS(){const n=S().notify=S().notify||{};
+  const d={topic:'',drop:true,rise:true,heat:true,uv:true,th:3,followup:2,daily:true,dailyHour:9,sent:[]};
+  for(const k in d)if(n[k]===undefined)n[k]=d[k];return n}
+function WX(code,day){
+  const c=+code;
+  if(c===0)return[day?'☀️':'🌙','快晴'];
+  if(c===1)return[day?'🌤️':'🌙','晴れ'];
+  if(c===2)return['⛅','晴れ時々くもり'];
+  if(c===3)return['☁️','くもり'];
+  if(c===45||c===48)return['🌫️','霧'];
+  if(c>=51&&c<=57)return['🌦️','霧雨'];
+  if(c===61)return['🌧️','小雨'];if(c===63)return['🌧️','雨'];if(c>=65&&c<=67)return['🌧️','強い雨'];
+  if(c>=71&&c<=77)return['🌨️','雪'];
+  if(c===80||c===81)return['🌦️','にわか雨'];if(c===82)return['🌧️','強いにわか雨'];
+  if(c===85||c===86)return['🌨️','にわか雪'];
+  if(c>=95)return['⛈️','雷雨'];
+  return['・','—'];
+}
+const dayLabel=ms=>{const a=new Date(ms),b=new Date();a.setHours(0,0,0,0);b.setHours(0,0,0,0);
+  const d=Math.round((a-b)/864e5);return d===0?'今日':d===1?'明日':d===2?'明後日':d===-1?'昨日':`${a.getMonth()+1}/${a.getDate()}`};
+const absLabel=ms=>`${fmtDate(ms)}${new Date(ms).getHours()}時`;
+const sgn=v=>(v>0?'+':v<0?'−':'±')+Math.abs(v).toFixed(1);
+
 function getPos(){return new Promise((ok,ng)=>{
   if(!navigator.geolocation)return ng();
-  navigator.geolocation.getCurrentPosition(p=>ok({lat:+p.coords.latitude.toFixed(3),lon:+p.coords.longitude.toFixed(3)}),ng,{timeout:10000,maximumAge:3600e3});
+  navigator.geolocation.getCurrentPosition(p=>ok({lat:+p.coords.latitude.toFixed(3),lon:+p.coords.longitude.toFixed(3)}),ng,{timeout:12000,maximumAge:30*60000});
 })}
+let loading=false;
 async function loadWeather(){
-  let c=CITIES[state.settings.city]||CITIES.kitakyushu;
-  if(state.settings.city==='here'){
-    try{const p=await getPos();c={name:'現在地',...p};state.settings.here=p;local.saveSettings(state.settings)}
-    catch(e){if(state.settings.here)c={name:'現在地',...state.settings.here};else{toast('位置情報が使えないため北九州で表示します');c=CITIES.kitakyushu}}
+  if(loading)return;loading=true;
+  let c=CITIES[S().city]||CITIES.here;
+  if(S().city==='here'){
+    try{const p=await getPos();c={name:'現在地',...p};S().here=p;saveSettings()}
+    catch(e){if(S().here)c={name:'現在地（前回の位置）',...S().here};else{toast('位置情報が使えないため北九州で表示します');c=CITIES.kitakyushu}}
   }
-  const url=`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=pressure_msl,temperature_2m&current=pressure_msl,temperature_2m&past_days=2&forecast_days=3&timezone=auto`;
-  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),10000);
+  const vars='pressure_msl,temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,uv_index,is_day';
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=${vars}&past_days=2&forecast_days=4&timezone=auto`;
+  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),12000);
   try{
     const res=await fetch(url,{signal:ctl.signal});clearTimeout(to);
     if(!res.ok)throw 0;
-    const j=await res.json();
-    const off=(j.utc_offset_seconds||0)*1000;
-    const t=j.hourly.time.map(s=>Date.parse(s+':00Z')-off);
-    state.weather={t,p:j.hourly.pressure_msl,temp:j.hourly.temperature_2m,
-      cur:{p:j.current.pressure_msl,temp:j.current.temperature_2m},city:c.name,at:Date.now()};
+    const j=await res.json(),h=j.hourly,off=(j.utc_offset_seconds||0)*1000;
+    state.weather={t:h.time.map(s=>Date.parse(s+':00Z')-off),p:h.pressure_msl,temp:h.temperature_2m,app:h.apparent_temperature,
+      hum:h.relative_humidity_2m,code:h.weather_code,uv:h.uv_index,day:h.is_day,city:c.name,at:Date.now()};
     try{localStorage.setItem(WKEY,JSON.stringify(state.weather))}catch(e){}
   }catch(e){
-    try{const w=JSON.parse(localStorage.getItem(WKEY)||'null');if(w&&Date.now()-w.at<48*3600e3){w.stale=true;state.weather=w}}catch(_){}
+    try{const w=JSON.parse(localStorage.getItem(WKEY)||'null');if(w&&Date.now()-w.at<72*HOUR){w.stale=true;state.weather=w}}catch(_){}
   }
-  renderSky();
+  loading=false;
+  renderSky();scheduleForecast();
 }
-function idxAt(ms){const w=state.weather;if(!w)return -1;let best=-1,bd=Infinity;
-  w.t.forEach((t,i)=>{const d=Math.abs(t-ms);if(d<bd){bd=d;best=i}});return bd<=90*60000?best:-1}
+function nearest(ms){const w=state.weather;if(!w)return -1;let best=-1,bd=Infinity;
+  w.t.forEach((t,i)=>{const d=Math.abs(t-ms);if(d<bd){bd=d;best=i}});return best}
+function idxAt(ms){const i=nearest(ms);return i>=0&&Math.abs(state.weather.t[i]-ms)<=90*60000?i:-1}
+const num1=v=>v==null||isNaN(v)?null:+(+v).toFixed(1);
 function snapshotAt(ms){
   const w=state.weather,i=idxAt(ms);if(i<0)return null;
-  const d6=i>=6?+(w.p[i]-w.p[i-6]).toFixed(1):null;
-  return {p:+w.p[i].toFixed(1),temp:+w.temp[i].toFixed(1),d6};
+  return {p:num1(w.p[i]),temp:num1(w.temp[i]),d6:i>=6?num1(w.p[i]-w.p[i-6]):null,
+    app:num1(w.app[i]),hum:w.hum[i],uv:num1(w.uv[i]),code:w.code[i],day:w.day[i]};
 }
-function maxDrop(ps){let m=0;for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length&&j<=i+6;j++)m=Math.max(m,ps[i]-ps[j]);return m}
 
+/* ---- events: pressure change, heat, sunlight ---- */
+function detectEvents(){
+  const w=state.weather;if(!w)return[];
+  const th=NS().th,now=Date.now(),n=w.t.length,horizon=now+72*HOUR,raw=[];
+  let cur=null;
+  for(let i=0;i+6<n;i++){
+    const d=w.p[i+6]-w.p[i],type=d<=-th?'drop':d>=th?'rise':null;
+    if(type&&cur&&cur.type===type&&cur.last===i-1){cur.last=i;cur.mag=Math.max(cur.mag,Math.abs(d));continue}
+    if(cur){raw.push(cur);cur=null}
+    if(type)cur={type,idx:i,last:i,mag:Math.abs(d)};
+  }
+  if(cur)raw.push(cur);
+  const ev=raw.map(e=>({...e,at:w.t[e.idx],end:w.t[Math.min(n-1,e.last+6)]})).filter(e=>e.end>=now&&e.at<=horizon);
+  const days={};
+  for(let i=0;i<n;i++){
+    if(w.t[i]<now-HOUR||w.t[i]>horizon)continue;
+    const key=new Date(w.t[i]).toDateString();
+    const hot=w.app[i]>=30,sun=w.uv[i]>=6&&w.day[i];
+    if(!hot&&!sun)continue;
+    const d=days[key]=days[key]||{type:'sun',idx:i,at:w.t[i],app:-99,uv:0};
+    if(hot)d.app=Math.max(d.app,w.app[i]);if(sun)d.uv=Math.max(d.uv,w.uv[i]);
+  }
+  return [...ev,...Object.values(days)].sort((a,b)=>a.at-b.at);
+}
+const EV={
+  drop:{ic:'↘',name:'気圧が下がる',txt:e=>`6時間で約${e.mag.toFixed(1)}hPa下がる`,
+    title:'頭痛に注意：気圧が下がります',msg:e=>`${absLabel(e.at)}ごろから、6時間で約${e.mag.toFixed(1)}hPa下がる予報です。無理をせず、薬の用意を。`,tag:'cloud'},
+  rise:{ic:'↗',name:'気圧が上がる',txt:e=>`6時間で約${e.mag.toFixed(1)}hPa上がる`,
+    title:'頭痛に注意：気圧が上がります',msg:e=>`${absLabel(e.at)}ごろから、6時間で約${e.mag.toFixed(1)}hPa上がる予報です。無理をせず、薬の用意を。`,tag:'cloud'},
+  sun:{ic:'☀️',name:'暑さ・日差し',
+    txt:e=>[e.app>=30?`体感${Math.round(e.app)}℃`:'',e.uv>=6?`UV指数${Math.round(e.uv)}`:''].filter(Boolean).join('・')+'まで上がる',
+    title:'暑さ・日差しに注意',
+    msg:e=>`${absLabel(e.at)}ごろから`+[e.app>=30?`体感${Math.round(e.app)}℃`:'',e.uv>=6?`強い日差し（UV指数${Math.round(e.uv)}）`:''].filter(Boolean).join('と')+'の予報です。水分補給と、帽子やサングラスで光を和らげて。',tag:'sunny'}
+};
+function whenText(e){const now=Date.now();
+  if(e.at<=now)return e.end?`いま〜${dayLabel(e.end)}${new Date(e.end).getHours()}時ごろ`:'いま';
+  return `${dayLabel(e.at)} ${new Date(e.at).getHours()}時ごろから`}
+
+/* ---- one-day summary ---- */
+const LVL=[
+  {n:'危険',c:'#8E1F4B',tag:'red_circle'},
+  {n:'警戒',c:'#D2502E',tag:'orange_circle'},
+  {n:'注意',c:'#E3A72F',tag:'yellow_circle'},
+  {n:'安全',c:'#3C7FB0',tag:'large_blue_circle'},
+  {n:'快適',c:'#3F8F5C',tag:'green_circle'}];
+// 点数 → レベル（合計が多いほど重い）
+const levelFromScore=sc=>sc>=8?0:sc>=5?1:sc>=3?2:sc>=1?3:4;
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function evLevel(e){const th=NS().th;
+  if(e.type==='sun')return e.app>=35?1:2;
+  return e.mag>=th*2?0:e.mag>=th*1.5?1:2}
+const pill=(i,txt)=>`<span class="lvl${i===2?' l2':''}" style="background:${LVL[i].c}">${txt||LVL[i].n}</span>`;
+const scaleBar=i=>`<div class="scale" aria-hidden="true">${LVL.map((l,k)=>`<span class="${k===i?'on':''}${k===i&&k===2?' l2':''}" style="${k===i?`background:${l.c}`:''}">${l.n}</span>`).join('')}</div>`;
+const tod=h=>h<5?'未明':h<9?'朝':h<12?'昼前':h<15?'昼すぎ':h<18?'夕方':'夜';
+function daySummary(dayMs){
+  const w=state.weather;if(!w)return null;
+  const d0=new Date(dayMs);d0.setHours(0,0,0,0);const a=+d0,b=a+24*HOUR,th=NS().th;
+  const range=(x,y)=>w.t.map((t,i)=>i).filter(i=>w.t[i]>=x&&w.t[i]<y);
+  const ix=range(a,b);if(ix.length<20)return null;
+  const yx=range(a-24*HOUR,a),hasY=yx.length>=20;
+  const val=(k,idx)=>idx.map(i=>+w[k][i]);
+  const daytime=idx=>idx.filter(i=>{const h=new Date(w.t[i]).getHours();return h>=7&&h<=18});
+  const day=daytime(ix);
+  const cnt={};day.forEach(i=>{cnt[w.code[i]]=(cnt[w.code[i]]||0)+1});
+  const codes=day.map(i=>w.code[i]);
+  const worst=codes.filter(c=>c>=61).sort((x,y)=>y-x)[0];
+  const main=+Object.entries(cnt).sort((x,y)=>y[1]-x[1])[0][0];
+  const [ic,lb]=WX(main,1);
+  const ps=val('p',ix),tmax=Math.max(...val('temp',ix)),tmin=Math.min(...val('temp',ix));
+  const amax=Math.max(...val('app',ix)),amin=Math.min(...val('app',ix)),uvmax=Math.max(...val('uv',ix));
+  const humDay=avg(val('hum',day)),tempDay=avg(val('temp',day));
+  let pmag=0;
+  for(let i=0;i+6<w.t.length;i++){if(w.t[i]<a-3*HOUR||w.t[i]>=b)continue;pmag=Math.max(pmag,Math.abs(w.p[i+6]-w.p[i]))}
+  const ev=detectEvents().filter(e=>e.type!=='sun'&&e.at<b&&(e.end||e.at)>=a);
+  const sun=detectEvents().find(e=>e.type==='sun'&&e.at>=a&&e.at<b);
+
+  // ---- 要因ごとの点数 ----
+  const R=[];const add=(pt,txt)=>{if(pt>0)R.push({pt,txt})};
+  // 気圧の変化（6時間の変化を、設定した目安と比べる）
+  const r=pmag/th;
+  add(r>=2?4:r>=1.5?3:r>=1?2:r>=0.6?1:0,`気圧の変化（6時間で最大${pmag.toFixed(1)}hPa）`);
+  if(Math.min(...ps)<1000)add(1,`気圧が低め（${Math.round(Math.min(...ps))}hPa）`);
+  // 暑さ・寒さ
+  add(amax>=35?3:amax>=32?2:amax>=30?1:0,`暑さ（体感${Math.round(amax)}℃）`);
+  if(amin<=0)add(1,`冷え込み（体感${Math.round(amin)}℃）`);
+  if(tmax-tmin>=12)add(1,`1日の寒暖差（${Math.round(tmax-tmin)}℃）`);
+  // 湿度
+  if(humDay!=null){
+    if(humDay>=75&&tempDay>=26)add(2,`蒸し暑さ（湿度${Math.round(humDay)}%）`);
+    else if(humDay>=85)add(1,`湿度が高い（${Math.round(humDay)}%）`);
+    else if(humDay<=30)add(1,`乾燥（湿度${Math.round(humDay)}%）`);
+  }
+  // 日差し
+  add(uvmax>=8?2:uvmax>=6?1:0,`強い日差し（UV指数${Math.round(uvmax)}）`);
+  // 雷・天気の急変
+  if(codes.some(c=>c>=95))add(1,'雷雨の予報');
+  // 昨日からの変化
+  if(hasY){
+    const dp=avg(ps)-avg(val('p',yx)),dt=tmax-Math.max(...val('temp',yx));
+    add(Math.abs(dp)>=8?2:Math.abs(dp)>=5?1:0,`昨日より気圧が${dp<0?'低い':'高い'}（${sgn(dp)}hPa）`);
+    add(Math.abs(dt)>=7?2:Math.abs(dt)>=5?1:0,`昨日より${dt>0?'暑い':'寒い'}（最高気温${sgn(dt).replace('.0','')}℃）`);
+  }
+  // 自分の状態（前日の頭痛・続く服薬）
+  const recY=state.records.filter(x=>{const t=+new Date(x.start);return t>=a-24*HOUR&&t<a});
+  const ongoing=state.records.some(x=>!x.end&&+new Date(x.start)<b);
+  if(recY.length)add(1,'前の日にも頭痛があった');
+  else if(ongoing&&a<=Date.now())add(1,'頭痛が続いている');
+  const medDays=new Set();state.records.forEach(x=>(x.meds||[]).forEach(m=>{const t=+new Date(m.time);if(t>=a-3*24*HOUR&&t<a)medDays.add(new Date(t).toDateString())}));
+  if(medDays.size>=2)add(1,`この3日で${medDays.size}日薬を飲んでいる`);
+
+  const score=R.reduce((x,y)=>x+y.pt,0),lv=levelFromScore(score),level=LVL[lv].n;
+  R.sort((x,y)=>y.pt-x.pt);
+  const pLines=ev.sort((x,y)=>x.at-y.at).map(e=>{const dir=e.type==='drop'?'下がる':'上がる';
+    const when=e.at<a?`${tod(new Date(e.end).getHours())}まで`:`${tod(new Date(e.at).getHours())}から`;
+    return `${when}${dir}（6時間で約${e.mag.toFixed(1)}hPa）`});
+  const lines=[
+    `${ic} ${lb}${worst&&worst!==main?`（${WX(worst,1)[1]}の時間あり）`:''}　最高${Math.round(tmax)}℃／最低${Math.round(tmin)}℃`,
+    `気圧：${pLines.length?pLines.join('、'):'大きな変化なし'}（${Math.round(Math.min(...ps))}〜${Math.round(Math.max(...ps))}hPa）`,
+    `体感 最高${Math.round(amax)}℃・湿度${humDay!=null?Math.round(humDay):'—'}%・UV指数 最大${Math.round(uvmax)}`,
+    R.length?`主な理由：${R.slice(0,3).map(x=>x.txt).join('、')}`:'目立った要因はありません'
+  ];
+  return {lv,level,lines,ev,sun,pmag,score,reasons:R};
+}
+
+/* ---- sky panel ---- */
 function renderSky(){
-  const w=state.weather,el=$('#sky');
+  const w=state.weather;
   if(!w){
-    el.innerHTML=`<div class="skyhead"><span class="offline">気象データを読み込めませんでした（電波を確認してください）。記録するときは気圧と気温を手で入力できます。</span><button class="refresh" id="rf">再読み込み</button></div>`;
-    $('#rf').onclick=loadWeather;
+    $('#now').innerHTML=`<div class="skyhead"><span class="offline">天気を読み込めませんでした（電波を確認してください）。記録するときは気圧と気温を手で入力できます。</span><button class="refresh" id="rf">再読み込み</button></div>`;
+    $('#rf').onclick=loadWeather;$('#chartArea').hidden=true;return;
+  }
+  const now=Date.now(),i=nearest(now),c3=i>=3?w.p[i]-w.p[i-3]:0,[ic,lb]=WX(w.code[i],w.day[i]);
+  const upd=new Date(w.at),arrow=c3<=-0.5?'↘ 下降中':c3>=0.5?'↗ 上昇中':'→ 横ばい';
+  $('#now').innerHTML=`
+    <div class="skyhead"><span class="sync">${esc(w.city)}・${w.stale?'前回取得の予報':'更新'} ${upd.getMonth()+1}/${upd.getDate()} ${fmtTime(upd)}</span><button class="refresh" id="rf">更新</button></div>
+    <div class="nowrow"><span class="ic" aria-hidden="true">${ic}</span>
+      <div><div class="now"><span class="p">${w.p[i].toFixed(0)}<small>hPa</small></span><span class="t">${w.temp[i].toFixed(1)}℃</span></div>
+      <div class="lb">${lb}・${arrow}（3時間で ${sgn(c3)}hPa）</div></div></div>
+    <div class="facts"><span>体感 <b>${Math.round(w.app[i])}</b>℃</span><span>湿度 <b>${Math.round(w.hum[i])}</b>%</span><span>UV指数 <b>${(+w.uv[i]).toFixed(0)}</b></span></div>
+    ${(()=>{const sm=daySummary(now);return sm?`<div style="margin-top:14px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>今日の頭痛予報</b>${pill(sm.lv)}</div>${scaleBar(sm.lv)}<div class="note" style="font-size:.88rem;color:var(--ink);margin:0">${sm.lines.map(esc).join('<br>')}</div>
+      <details class="crit"><summary>判定のしかた</summary>
+        <p>次の要因に点数をつけて、合計でレベルを決めています（今日は合計${sm.score}点）。</p>
+        <p>・気圧の6時間の変化（目安${NS().th}hPaに対して：0.6倍〜1点、1倍〜2点、1.5倍〜3点、2倍〜4点）、気圧が1000hPa未満 1点</p>
+        <p>・暑さ（体感30℃〜1点、32℃〜2点、35℃〜3点）、冷え込み 1点、1日の寒暖差12℃以上 1点</p>
+        <p>・湿度（蒸し暑い 2点、85%以上 1点、30%以下 1点）、日差し（UV指数6〜1点、8〜2点）、雷雨 1点</p>
+        <p>・昨日との差（気圧 5hPa〜1点・8hPa〜2点、最高気温 5℃〜1点・7℃〜2点）</p>
+        <p>・自分の状態（前の日に頭痛 1点、3日で2日以上服薬 1点）</p>
+        <p style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center"><span>${pill(0)} 8点以上</span><span>${pill(1)} 5〜7点</span><span>${pill(2)} 3〜4点</span><span>${pill(3)} 1〜2点</span><span>${pill(4)} 0点</span></p>
+      </details></div>`:''})()}`;
+  $('#rf').onclick=()=>{$('#rf').textContent='更新中…';loadWeather()};
+  $('#chartArea').hidden=false;
+  buildChart();renderAlerts();
+}
+function renderAlerts(){
+  const ev=detectEvents(),el=$('#alerts');
+  if(!ev.length){el.innerHTML=`<li style="cursor:default"><span class="ai" style="color:var(--ok)">✓</span><div>この先3日間、大きな気圧の変化・暑さ・強い日差しの予報はありません。</div></li>`;return}
+  el.innerHTML=ev.slice(0,8).map(e=>`<li data-i="${e.idx}"><span class="ai ${e.type}">${EV[e.type].ic}</span><div><div><span class="tagl${evLevel(e)===2?' l2':''}" style="background:${LVL[evLevel(e)].c}">${LVL[evLevel(e)].n}</span>${EV[e.type].name}：${EV[e.type].txt(e)}</div><div class="aw">${whenText(e)}</div></div></li>`).join('');
+  el.querySelectorAll('li[data-i]').forEach(li=>li.onclick=()=>{scrollToIdx(+li.dataset.i,true);$('#readout').scrollIntoView({block:'center',behavior:'smooth'})});
+}
+
+/* ---- scrollable chart ---- */
+const PX=14;
+let chartInit=false,centerIdx=null;
+function buildChart(){
+  const w=state.weather,sc=$('#scroller');
+  const n=w.t.length,pad=Math.max(120,Math.round(sc.clientWidth/2)),W=pad*2+(n-1)*PX,H=236;
+  const X=i=>pad+i*PX,pTop=40,pBot=142,tTop=156,tBot=198;
+  const plo=Math.floor(Math.min(...w.p)-1),phi=Math.ceil(Math.max(...w.p)+1);
+  const Yp=v=>pTop+(phi-v)/(phi-plo)*(pBot-pTop);
+  const tlo=Math.floor(Math.min(...w.temp)-1),thi=Math.ceil(Math.max(...w.temp)+1);
+  const Yt=v=>tTop+(thi-v)/(thi-tlo)*(tBot-tTop);
+  const now=Date.now(),ni=nearest(now),th=NS().th;
+  let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="気圧と気温の推移">`;
+  s+=`<rect x="${X(0)}" y="4" width="${X(ni)-X(0)}" height="${tBot-4}" fill="var(--soft)" opacity=".6"/>`;
+  const step=Math.max(1,Math.round((phi-plo)/4));
+  for(let v=plo;v<=phi;v+=step)s+=`<line x1="${X(0)}" x2="${X(n-1)}" y1="${Yp(v)}" y2="${Yp(v)}" stroke="var(--line)"/>`;
+  for(let i=0;i<n;i++){
+    const d=new Date(w.t[i]),h=d.getHours();
+    if(h===0){
+      s+=`<line x1="${X(i)}" x2="${X(i)}" y1="4" y2="${H-18}" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".6"/>`;
+      s+=`<text x="${X(i)+4}" y="${H-4}" font-size="12" font-weight="700" fill="var(--ink)">${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</text>`;
+      for(let v=plo;v<=phi;v+=step)s+=`<text x="${X(i)+4}" y="${Yp(v)-3}" font-size="10" fill="var(--muted)">${v}</text>`;
+    }else if(h%6===0)s+=`<text x="${X(i)}" y="${H-4}" font-size="11" text-anchor="middle" fill="var(--muted)">${h}時</text>`;
+    if(h%3===0)s+=`<text x="${X(i)}" y="24" font-size="15" text-anchor="middle">${WX(w.code[i],w.day[i])[0]}</text>`;
+    if(h===14)s+=`<text x="${X(i)}" y="${Yt(w.temp[i])-6}" font-size="11" text-anchor="middle" fill="var(--temp)">${Math.round(w.temp[i])}°</text>`;
+    if(h===5)s+=`<text x="${X(i)}" y="${Math.min(tBot+12,Yt(w.temp[i])+15)}" font-size="11" text-anchor="middle" fill="var(--temp)">${Math.round(w.temp[i])}°</text>`;
+  }
+  s+=`<path d="M${X(0)},${pBot} ${w.p.map((v,i)=>`L${X(i)},${Yp(v).toFixed(1)}`).join(' ')} L${X(n-1)},${pBot}Z" fill="var(--accent)" opacity=".1"/>`;
+  for(let i=1;i<n;i++){
+    const c=w.p[i]-w.p[Math.max(0,i-3)],col=c<=-th/2?'var(--warn)':c>=th/2?'var(--rise)':'var(--accent)',bold=col!=='var(--accent)';
+    s+=`<line x1="${X(i-1)}" y1="${Yp(w.p[i-1]).toFixed(1)}" x2="${X(i)}" y2="${Yp(w.p[i]).toFixed(1)}" stroke="${col}" stroke-width="${bold?3.5:2.5}" stroke-linecap="round"/>`;
+  }
+  s+=`<polyline points="${w.temp.map((v,i)=>`${X(i)},${Yt(v).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--temp)" stroke-width="2" stroke-linejoin="round"/>`;
+  s+=`<line x1="${X(ni)}" x2="${X(ni)}" y1="4" y2="${tBot}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3"/><text x="${X(ni)+4}" y="${pTop-4}" font-size="11" fill="var(--ink)">いま</text>`;
+  state.records.forEach(r=>{const i=idxAt(+new Date(r.start));if(i<0)return;
+    s+=`<circle cx="${X(i)}" cy="${Yp(w.p[i])}" r="6" fill="${COLORS[(r.intensity||5)-1]}" stroke="var(--surface)" stroke-width="2"/>`});
+  $('#chartInner').innerHTML=s+'</svg>';
+  if(!chartInit||centerIdx==null){chartInit=true;scrollToIdx(ni)}
+  else scrollToIdx(Math.min(n-1,centerIdx));
+  readout();
+}
+function scrollToIdx(i,smooth){const sc=$('#scroller');sc.scrollTo({left:i*PX,behavior:smooth?'smooth':'auto'});if(!smooth){centerIdx=i;readout()}}
+function readout(){
+  const w=state.weather;if(!w)return;
+  const sc=$('#scroller'),i=Math.max(0,Math.min(w.t.length-1,Math.round(sc.scrollLeft/PX)));centerIdx=i;
+  const t=w.t[i],[ic,lb]=WX(w.code[i],w.day[i]),c3=i>=3?w.p[i]-w.p[i-3]:0,past=t<Date.now()-30*60000;
+  $('#readout').innerHTML=`<div class="rt">${dayLabel(t)} ${new Date(t).getHours()}時<small>${past?'過去':Math.abs(t-Date.now())<=30*60000?'いま':'予報'}</small></div>
+    <div class="facts" style="margin-top:2px"><span>${ic} ${lb}</span><span>気圧 <b>${w.p[i].toFixed(1)}</b>hPa（3h ${sgn(c3)}）</span><span>気温 <b>${w.temp[i].toFixed(1)}</b>℃（体感 ${Math.round(w.app[i])}℃）</span><span>湿度 ${Math.round(w.hum[i])}%</span><span>UV ${(+w.uv[i]).toFixed(0)}</span></div>`;
+}
+(function(){let raf=0;const sc=document.getElementById('scroller');
+  sc.addEventListener('scroll',()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;readout()})},{passive:true});
+  sc.addEventListener('click',e=>{const r=sc.getBoundingClientRect(),pad=Math.max(120,Math.round(sc.clientWidth/2));
+    const i=Math.round((e.clientX-r.left+sc.scrollLeft-pad)/PX);if(state.weather&&i>=0&&i<state.weather.t.length)scrollToIdx(i,true)});
+  document.getElementById('toNow').onclick=()=>scrollToIdx(nearest(Date.now()),true);
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(state.weather)buildChart()},200)});
+})();
+
+/* ---------- notifications (ntfy) ---------- */
+const appURL=()=>location.href.split('#')[0].split('?')[0];
+async function ntfy(title,message,atMs,tag){
+  const n=NS();if(!n.topic)throw new Error('no topic');
+  const body={topic:n.topic,title,message,click:appURL(),tags:[tag||'bell']};
+  if(atMs&&atMs>Date.now()+60000)body.delay=String(Math.floor(atMs/1000));
+  const r=await fetch('https://ntfy.sh/',{method:'POST',body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('ntfy '+r.status);
+}
+function quiet(ms){const d=new Date(ms),h=d.getHours();
+  if(h>=22){d.setHours(21,0,0,0);return +d}
+  if(h<7){d.setDate(d.getDate()-1);d.setHours(21,0,0,0);return +d}
+  return ms}
+let scheduling=false;
+async function scheduleForecast(){
+  const n=NS();if(!n.topic||!state.weather||state.weather.stale||scheduling)return;
+  scheduling=true;
+  const now=Date.now();
+  n.sent=(n.sent||[]).filter(x=>x.at>now-24*HOUR);
+  const want=e=>e.type==='sun'?((n.heat&&e.app>=30)||(n.uv&&e.uv>=6)):n[e.type];
+  const todo=[];
+  for(const e of detectEvents()){
+    if(!want(e)||e.at<=now)continue;
+    if(n.sent.some(x=>x.type===e.type&&Math.abs(x.at-e.at)<=4*HOUR))continue;
+    let when=quiet(e.at-2*HOUR);
+    if(when>now+71*HOUR)continue;
+    if(when<now+60000)when=now;
+    todo.push({e,when});
+  }
+  let failed=false;
+  if(n.daily){
+    for(let k=0;k<4&&!failed;k++){
+      const d=new Date(now);d.setDate(d.getDate()+k);d.setHours(n.dailyHour,0,0,0);const at=+d;
+      if(at<now+60000||at>now+71*HOUR)continue;
+      if(n.sent.some(x=>x.type==='daily'&&x.at===at))continue;
+      const sm=daySummary(at);if(!sm)continue;
+      try{await ntfy(`${d.getMonth()+1}/${d.getDate()}の頭痛予報：${sm.level}`,sm.lines.join('\n'),at,LVL[sm.lv].tag);
+        n.sent.push({type:'daily',at,n:at})}
+      catch(e){failed=true}
+    }
+  }
+  // 近い時刻の通知はまとめて1通にする
+  const groups=[];
+  todo.sort((a,b)=>a.when-b.when).forEach(x=>{const g=groups[groups.length-1];
+    if(g&&x.when-g[0].when<=2*HOUR)g.push(x);else groups.push([x])});
+  for(const g of groups){
+    if(failed)break;
+    const lv=Math.min(...g.map(x=>evLevel(x.e)));
+    const base=g.length===1?EV[g[0].e.type].title.replace(/^頭痛に注意：/,''):(g.some(x=>x.e.type!=='sun')?'天気が変わります':EV.sun.title);
+    const title=`【${LVL[lv].n}】${base}`;
+    const msg=g.map(x=>EV[x.e.type].msg(x.e)).join('\n');
+    try{await ntfy(title,msg,g[0].when,LVL[lv].tag);g.forEach(x=>n.sent.push({type:x.e.type,at:x.e.at,n:g[0].when}))}
+    catch(err){failed=true;break}
+  }
+  saveSettings();scheduling=false;renderNotify();
+  if(failed)toast('通知の予約に失敗しました（電波を確認してください）');
+}
+async function scheduleFollowup(r){
+  const n=NS();if(!n.topic||!n.followup||r.end)return;
+  const at=+new Date(r.start)+n.followup*HOUR;if(at<Date.now()+60000)return;
+  try{await ntfy('頭痛の様子はどうですか？',`${fmtTime(r.start)}に記録した頭痛から${n.followup}時間たちました。治っていたら「治った」を、まだ痛むなら強さや薬を記録しましょう。`,at,'face_with_head_bandage');
+    toast(`${n.followup}時間後に様子を確認します`)}
+  catch(e){toast('様子確認の通知を予約できませんでした')}
+}
+function renderNotify(){
+  const n=NS(),el=$('#notifyBody');
+  if(!n.topic){
+    el.innerHTML=`<div class="card"><p style="margin:0 0 8px">頭痛が起こりそうな天気になる前と、頭痛を記録してから決まった時間がたったときに、iPhoneへ通知を送ります。通知は無料アプリ「ntfy」で受け取ります。</p>
+      <p class="note" style="margin:0 0 12px">天気の通知は、このアプリを開いたときに最大3日先まで予約されます。数日に1回は開いてください。</p>
+      <button class="btn primary" id="nStart">通知を使う準備をする</button></div>`;
+    $('#nStart').onclick=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);
+      n.topic='zutsu-'+[...a].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,18);saveSettings();renderNotify()};
     return;
   }
-  const now=Date.now(),i=idxAt(now);
-  const d3=i>=3?w.p[i]-w.p[i-3]:0;
-  const fut=w.p.filter((_,k)=>w.t[k]>=now&&w.t[k]<=now+24*3600e3);
-  const drop=maxDrop(fut);
-  const lvl=drop>=6?['warn','この先24時間で大きく下がる見込み']:drop>=3?['warn','この先24時間で下がる見込み']:['ok','この先24時間は大きな変化なし'];
-  const arrow=d3<=-0.5?'↘ 下降中':d3>=0.5?'↗ 上昇中':'→ 横ばい';
-  const curP=w.stale&&i>=0?w.p[i]:w.cur.p, curT=w.stale&&i>=0?w.temp[i]:w.cur.temp;
-  const upd=new Date(w.at);
-  el.innerHTML=`
-    <div class="skyhead"><span class="sync">${esc(w.city)}・${w.stale?'前回取得の予報':'更新'} ${upd.getMonth()+1}/${upd.getDate()} ${fmtTime(upd)}</span><button class="refresh" id="rf">更新</button></div>
-    <div class="now"><span class="p">${curP.toFixed(0)}<small>hPa</small></span><span class="t">${curT.toFixed(1)}℃</span></div>
-    <div class="trend">${arrow}　3時間で <b>${d3>0?'+':''}${d3.toFixed(1)}</b> hPa</div>
-    <span class="risk ${lvl[0]}">${lvl[1]}（6時間で最大 −${drop.toFixed(1)} hPa）</span>
-    <div class="chart">${chartSVG(w,now)}</div>
-    <p class="note">海面気圧。前後24時間。赤い線は気圧が下がっている時間帯、点は頭痛の記録です。注意の目安は6時間で3hPa以上の低下としています。</p>`;
-  $('#rf').onclick=()=>{$('#rf').textContent='更新中…';loadWeather()};
-}
-function chartSVG(w,now){
-  const W=600,H=170,L=34,R=8,T=12,B=24;
-  const t0=now-24*3600e3,t1=now+24*3600e3;
-  const pts=w.t.map((t,i)=>({t,p:w.p[i]})).filter(o=>o.t>=t0&&o.t<=t1);
-  if(pts.length<2)return '';
-  let lo=Math.min(...pts.map(o=>o.p)),hi=Math.max(...pts.map(o=>o.p));
-  lo=Math.floor(lo-1);hi=Math.ceil(hi+1);
-  const x=t=>L+(t-t0)/(t1-t0)*(W-L-R),y=p=>T+(hi-p)/(hi-lo)*(H-T-B);
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="気圧の推移">`;
-  const step=Math.max(1,Math.round((hi-lo)/4));
-  for(let v=lo;v<=hi;v+=step){s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-4}" y="${y(v)+4}" font-size="11" text-anchor="end" fill="var(--muted)">${v}</text>`}
-  // midnight markers
-  const d=new Date(t0);d.setHours(24,0,0,0);
-  for(let m=d.getTime();m<t1;m+=24*3600e3){s+=`<line x1="${x(m)}" x2="${x(m)}" y1="${T}" y2="${H-B}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${x(m)+3}" y="${H-8}" font-size="11" fill="var(--muted)">${new Date(m).getMonth()+1}/${new Date(m).getDate()}</text>`}
-  s+=`<path d="M${x(pts[0].t)},${H-B} ${pts.map(o=>`L${x(o.t).toFixed(1)},${y(o.p).toFixed(1)}`).join(' ')} L${x(pts[pts.length-1].t)},${H-B}Z" fill="var(--accent)" opacity=".12"/>`;
-  for(let i=1;i<pts.length;i++){
-    const back=pts[Math.max(0,i-3)],fall=back.p-pts[i].p>=1.5;
-    s+=`<line x1="${x(pts[i-1].t).toFixed(1)}" y1="${y(pts[i-1].p).toFixed(1)}" x2="${x(pts[i].t).toFixed(1)}" y2="${y(pts[i].p).toFixed(1)}" stroke="${fall?'var(--warn)':'var(--accent)'}" stroke-width="${fall?3.5:2.5}" stroke-linecap="round"/>`;
-  }
-  s+=`<line x1="${x(now)}" x2="${x(now)}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="1.5"/><text x="${x(now)+4}" y="${T+10}" font-size="11" fill="var(--ink)">いま</text>`;
-  state.records.filter(r=>{const t=+new Date(r.start);return t>=t0&&t<=now}).forEach(r=>{
-    const t=+new Date(r.start),i=idxAt(t);if(i<0)return;
-    s+=`<circle cx="${x(t)}" cy="${y(w.p[i])}" r="6" fill="${COLORS[(r.intensity||5)-1]}" stroke="var(--surface)" stroke-width="2"/>`;
-  });
-  return s+'</svg>';
+  const up=(n.sent||[]).filter(x=>x.n>Date.now()).sort((a,b)=>a.n-b.n);
+  const nm=t=>t==='daily'?'今日の頭痛予報':(EV[t]?.name||'');
+  const chk=(k,label)=>`<label class="chkrow"><input type="checkbox" data-k="${k}" ${n[k]?'checked':''}>${label}</label>`;
+  el.innerHTML=`<div class="card">
+    <ol class="steps">
+      <li>App Storeで「<b>ntfy</b>」をインストール</li>
+      <li>ntfyを開いて右上の「＋」→ Topic name に下の名前を貼り付けて「Subscribe」</li>
+      <li>「テスト通知を送る」で届くか確認</li>
+    </ol>
+    <div class="topic"><code id="nTopic">${esc(n.topic)}</code><button class="btn" id="nCopy">コピー</button></div>
+    <p class="note" style="margin:0 0 10px">この名前を知っている人には通知の内容が見えるので、他の人には教えないでください。</p>
+    <button class="btn" id="nTest">テスト通知を送る</button>
+  </div>
+  <div class="card" style="margin-top:10px">
+    <label class="chkrow"><input type="checkbox" data-k="daily" ${n.daily?'checked':''}>毎朝、今日の頭痛予報を知らせる</label>
+    <div style="display:flex;align-items:center;gap:8px;margin:0 0 14px 32px"><select id="nDh" style="width:auto">${[6,7,8,9,10].map(h=>`<option value="${h}">${h}時</option>`).join('')}</select><span class="ilabel">に届く</span></div>
+    <div class="lbl" style="font-weight:500">知らせてほしいこと（約2時間前・夜22時〜朝7時は前日21時）</div>
+    ${chk('drop','気圧が下がる')}${chk('rise','気圧が上がる')}${chk('heat','暑さ（体感30℃以上）')}${chk('uv','強い日差し（UV指数6以上）')}
+    <div class="field" style="margin-top:12px"><label for="nTh">気圧変化の目安（グラフと注意の表示にも使います）</label>
+      <select id="nTh"><option value="2">6時間で2hPa（敏感）</option><option value="3">6時間で3hPa（標準）</option><option value="4">6時間で4hPa（大きいときだけ）</option></select></div>
+    <div class="field" style="margin-top:12px"><label for="nFu">頭痛を記録したあと、様子を確認する</label>
+      <select id="nFu"><option value="0">確認しない</option><option value="1">1時間後</option><option value="2">2時間後</option><option value="3">3時間後</option><option value="4">4時間後</option></select></div>
+    <p class="note">予約済みの通知：${up.length}件${up.length?`（次：${absLabel(up[0].n)}ごろ ${nm(up[0].type)}）`:''}</p>
+    <button class="btn ghost" id="nStop" style="margin-top:6px">通知をやめる</button>
+  </div>`;
+  $('#nTh').value=String(n.th);$('#nDh').value=String(n.dailyHour);
+  $('#nDh').onchange=e=>{n.dailyHour=+e.target.value;n.sent=n.sent.filter(x=>x.type!=='daily');saveSettings();scheduleForecast();toast('次に開いたときから新しい時刻で予約します')};$('#nFu').value=String(n.followup);
+  el.querySelectorAll('input[data-k]').forEach(c=>c.onchange=()=>{n[c.dataset.k]=c.checked;saveSettings();scheduleForecast()});
+  $('#nTh').onchange=e=>{n.th=+e.target.value;saveSettings();renderSky();scheduleForecast()};
+  $('#nFu').onchange=e=>{n.followup=+e.target.value;saveSettings()};
+  $('#nCopy').onclick=async()=>{try{await navigator.clipboard.writeText(n.topic);toast('コピーしました')}catch(e){toast('長押しで選んでコピーしてください')}};
+  $('#nTest').onclick=async()=>{try{await ntfy('頭痛メモ','通知の設定ができました。',null,'white_check_mark');toast('送りました。届いたか確認してください');scheduleForecast()}catch(e){toast('送れませんでした（電波を確認してください）')}};
+  $('#nStop').onclick=()=>{if(!confirm('通知をやめますか？（すでに予約した通知は届くことがあります。ntfyアプリで購読を外すと止まります）'))return;
+    n.topic='';n.sent=[];saveSettings();renderNotify()};
 }
 
 /* ---------- render ---------- */
 function sorted(){return [...state.records].sort((a,b)=>new Date(b.start)-new Date(a.start))}
-function renderAll(){renderOngoing();renderStats();renderHistory();if(state.weather)renderSky()}
+function renderAll(){renderOngoing();renderStats();renderHistory();if(state.weather){buildChart()}}
 function renderOngoing(){
   const on=sorted().find(r=>!r.end),el=$('#ongoing');
   if(!on){el.innerHTML='';return}
   const mins=(Date.now()-new Date(on.start))/60000;
-  el.innerHTML=`<div class="ongoing"><p><b>続いている頭痛</b>　${fmtTime(on.start)}から ${fmtDur(mins)}・強さ ${on.intensity}</p>
+  el.innerHTML=`<div class="ongoing"><p><b>続いている頭痛</b>　${fmtTime(on.start)}から ${fmtDur(mins)}・強さ ${on.intensity}${mins>=60?'<br>いまの様子はどうですか？治っていたら「治った」を押してください。':''}</p>
     <div class="row"><button class="btn primary" data-act="healed">治った</button><button class="btn" data-act="med">薬を飲んだ</button><button class="btn ghost" data-act="edit">編集</button></div></div>`;
   el.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
     if(b.dataset.act==='healed'){const r={...on,end:new Date().toISOString(),updatedAt:Date.now()};await saveRec(r);toast(`治るまで ${fmtDur(durMin(r))}`)}
@@ -446,7 +815,8 @@ function renderStats(){
   const ended=rs.filter(r=>r.end),avgDur=ended.length?ended.reduce((s,r)=>s+durMin(r),0)/ended.length:null;
   const avgInt=rs.reduce((s,r)=>s+(+r.intensity||0),0)/rs.length;
   const medDays=new Set();rs.forEach(r=>(r.meds||[]).forEach(m=>{if(m.time)medDays.add(new Date(m.time).toDateString())}));
-  const withD=rs.filter(r=>r.d6!=null),drops=withD.filter(r=>r.d6<=-2);
+  const withD=rs.filter(r=>r.d6!=null),drops=withD.filter(r=>r.d6<=-2),rises=withD.filter(r=>r.d6>=2);
+  const hot=rs.filter(r=>(r.app!=null&&r.app>=30)||(r.uv!=null&&r.uv>=6));
   const areaCount={};rs.forEach(r=>(r.areas||[]).forEach(a=>areaCount[a]=(areaCount[a]||0)+1));
   const topArea=Object.entries(areaCount).sort((a,b)=>b[1]-a[1])[0];
   // per medicine: uses and minutes from first dose to relief
@@ -461,12 +831,13 @@ function renderStats(){
     <div class="stat"><div class="v">${avgInt.toFixed(1)}</div><div class="k">平均の強さ（10段階）</div></div>
     <div class="stat"><div class="v">${fmtDur(avgDur)}</div><div class="k">治るまでの平均</div></div>
     <div class="stat"><div class="v">${medDays.size}日</div><div class="k">薬を飲んだ日数</div></div>
-    <div class="stat"><div class="v">${withD.length?Math.round(drops.length/withD.length*100)+'%':'—'}</div><div class="k">気圧が下がっていた時の割合</div></div>
-    <div class="stat"><div class="v" style="font-size:1.1rem">${topArea?esc(topArea[0]):'—'}</div><div class="k">いちばん多い場所</div></div>
+    <div class="stat"><div class="v" style="font-size:1.1rem">${withD.length?`下降${drops.length}・上昇${rises.length}`:'—'}</div><div class="k">気圧が変化していた回数${withD.length?`（${withD.length}回中）`:''}</div></div>
+    <div class="stat"><div class="v">${hot.length}回</div><div class="k">暑さ・強い日差しのとき</div></div>
+    <div class="stat" style="grid-column:1/-1"><div class="v" style="font-size:1.1rem">${topArea?esc(topArea[0]):'—'}</div><div class="k">いちばん多い場所</div></div>
   </div>
   ${medRows?`<table class="medtable"><thead><tr><th>薬</th><th>使った回数</th><th>飲んでから治るまで</th></tr></thead><tbody>${medRows}</tbody></table>`:''}
   ${medDays.size>=10?`<div class="caution">この30日で薬を飲んだ日が${medDays.size}日あります。鎮痛薬を月に10日以上使う状態が続くと、薬の使いすぎによる頭痛につながることがあります。一度かかりつけ医に相談してみてください。</div>`:''}
-  <p class="note">「気圧が下がっていた」は、痛み始めの6時間前から2hPa以上下がっていた記録です。</p>`;
+  <p class="note">「気圧が変化していた」は痛み始めまでの6時間で2hPa以上、「暑さ・強い日差し」は体感30℃以上かUV指数6以上だった記録です。</p>`;
 }
 function renderHistory(){
   const el=$('#hist'),rs=sorted();
@@ -474,12 +845,12 @@ function renderHistory(){
   if(!rs.length){el.innerHTML='<li class="empty" style="cursor:default">まだ記録がありません。下のボタンから最初の頭痛を記録できます。</li>';return}
   el.innerHTML=rs.map(r=>{
     const meds=(r.meds||[]).filter(m=>m.name).map(m=>`${esc(m.name)}${m.time?` ${fmtTime(m.time)}`:''}`).join('、');
-    const wx=r.p!=null?`${r.p}hPa${r.d6!=null?`（6h ${r.d6>0?'+':''}${r.d6}）`:''}`:'';
+    const wx=r.p!=null?`${r.code!=null?WX(r.code,r.day)[0]+' ':''}${r.p}hPa${r.d6!=null?`（6h ${sgn(r.d6)}）`:''}`:'';
     return `<li data-id="${esc(r.id)}" style="--c:${COLORS[(r.intensity||5)-1]}">
       <div class="top"><span>${fmtDate(r.start)} ${fmtTime(r.start)}〜${r.end?fmtTime(r.end):'継続中'}</span><span>強さ ${r.intensity}</span></div>
       <div class="sub">${r.end?'治るまで '+fmtDur(durMin(r)):'まだ続いている'}${(r.areas||[]).length?'・'+esc(r.areas.join('、')):''}</div>
       ${meds?`<div class="sub">薬：${meds}</div>`:''}
-      ${wx?`<div class="sub">${wx}${r.temp!=null?' / '+r.temp+'℃':''}</div>`:''}
+      ${wx?`<div class="sub">${wx}${r.temp!=null?' / '+r.temp+'℃':''}${r.app!=null?`（体感${Math.round(r.app)}℃）`:''}${r.uv!=null?` / UV${Math.round(r.uv)}`:''}</div>`:''}
     </li>`}).join('');
   el.querySelectorAll('li[data-id]').forEach(li=>li.onclick=()=>openForm(state.records.find(r=>r.id===li.dataset.id)));
 }
@@ -563,15 +934,17 @@ function setInt(v){$('#fInt').value=v;$('#fIntOut').textContent=v;$('#fIntOut').
 function fillWeather(force){
   const s=$('#fStart').value;if(!s)return;
   const snap=snapshotAt(+new Date(s));
-  if(snap&&(force||!$('#fP').value)){$('#fP').value=snap.p;$('#fT').value=snap.temp;fState.d6=snap.d6;
-    $('#wNote').textContent=`${state.weather.city}の値を自動で入れました${snap.d6!=null?`（6時間前から ${snap.d6>0?'+':''}${snap.d6} hPa）`:''}。`}
-  else if(!snap&&!$('#fP').value){fState.d6=null;$('#wNote').textContent='自動で取れない時刻です。わかれば入力してください。'}
+  if(snap&&(force||!$('#fP').value)){
+    $('#fP').value=snap.p;$('#fT').value=snap.temp;fState.wx=snap;
+    const [ic,lb]=WX(snap.code,snap.day);
+    $('#wNote').textContent=`${ic} ${lb}・体感${Math.round(snap.app)}℃・湿度${Math.round(snap.hum)}%・UV${Math.round(snap.uv)}${snap.d6!=null?`・6時間で ${sgn(snap.d6)}hPa`:''}（${state.weather.city}の値を自動で入れました）`;
+  }else if(!snap&&force){fState.wx=null;$('#wNote').textContent='自動で取れない時刻です。わかれば気圧と気温を入力してください。'}
 }
 function openForm(rec,focusMed){
   state.editing=rec||null;
   $('#ftitle').textContent=rec?'記録を編集':'頭痛を記録';
   $('#del').hidden=!rec;
-  fState={areas:new Set(rec?.areas||[]),ongoing:rec?!rec.end:true,d6:rec?.d6??null};
+  fState={areas:new Set(rec?.areas||[]),ongoing:rec?!rec.end:true,wx:rec?{d6:rec.d6??null,app:rec.app??null,hum:rec.hum??null,uv:rec.uv??null,code:rec.code??null,day:rec.day??null}:null};
   $('#fStart').value=toInput(rec?.start||Date.now());
   $('#fEnd').value=rec?.end?toInput(rec.end):'';
   setInt(rec?.intensity||5);
@@ -593,9 +966,13 @@ $('#save').onclick=async()=>{
   if(end&&new Date(end)<new Date(start)){toast('治った時刻が始まりより前になっています');return}
   const meds=[...document.querySelectorAll('#meds .med')].map(d=>({name:d.querySelector('.mn').value.trim(),time:fromInput(d.querySelector('.mt').value),dose:d.querySelector('.md').value.trim()})).filter(m=>m.name);
   const num=v=>v===''?null:+v;
+  const wx=fState.wx||{};
+  const isNew=!state.editing;
   const r={id:state.editing?.id||newId(),start,end,areas:[...fState.areas],intensity:+$('#fInt').value,meds,
-    p:num($('#fP').value),temp:num($('#fT').value),d6:fState.d6??null,memo:$('#fMemo').value.trim(),updatedAt:Date.now()};
+    p:num($('#fP').value),temp:num($('#fT').value),d6:wx.d6??null,app:wx.app??null,hum:wx.hum??null,uv:wx.uv??null,code:wx.code??null,day:wx.day??null,
+    memo:$('#fMemo').value.trim(),updatedAt:Date.now()};
   await saveRec(r);closeForm();toast('保存しました');
+  if(isNew)scheduleFollowup(r);
 };
 $('#del').onclick=async()=>{if(!state.editing||!confirm('この記録を削除しますか？'))return;
   await local.remove(state.editing.id);closeForm();toast('削除しました')};
@@ -623,10 +1000,10 @@ async function deliver(filename,text,type){
 const today=()=>toInput(Date.now()).slice(0,10);
 $('#csv').onclick=async()=>{
   const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
-  const lines=[['開始','終了','治るまで(分)','場所','強さ','薬','気圧hPa','気温℃','6時間の気圧変化','メモ'].join(',')];
+  const lines=[['開始','終了','治るまで(分)','場所','強さ','薬','天気','気圧hPa','6時間の気圧変化','気温℃','体感℃','湿度%','UV指数','メモ'].join(',')];
   sorted().forEach(r=>lines.push([toInput(r.start).replace('T',' '),r.end?toInput(r.end).replace('T',' '):'',r.end?Math.round(durMin(r)):'',
     (r.areas||[]).join('・'),r.intensity,(r.meds||[]).map(m=>`${m.name}${m.dose?'('+m.dose+')':''} ${m.time?toInput(m.time).replace('T',' '):''}`).join(' / '),
-    r.p??'',r.temp??'',r.d6??'',r.memo||''].map(q).join(',')));
+    r.code!=null?WX(r.code,r.day)[1]:'',r.p??'',r.d6??'',r.temp??'',r.app??'',r.hum??'',r.uv??'',r.memo||''].map(q).join(',')));
   await deliver(`頭痛記録_${today()}.csv`,'\ufeff'+lines.join('\r\n'),'text/csv');
 };
 function showLastBackup(){const t=state.settings.lastBackup;
@@ -656,13 +1033,16 @@ $('#restore').onchange=async e=>{
 /* ---------- init ---------- */
 startLocal();
 $('#city').innerHTML=Object.entries(CITIES).map(([k,c])=>`<option value="${k}">${c.name}</option>`).join('');
-$('#city').value=state.settings.city in CITIES?state.settings.city:'kitakyushu';
+$('#city').value=state.settings.city in CITIES?state.settings.city:'here';
 $('#city').onchange=e=>{state.settings.city=e.target.value;local.saveSettings(state.settings);loadWeather()};
 if(!Array.isArray(state.settings.meds)){
   state.settings.meds=[...new Set(state.records.flatMap(r=>(r.meds||[]).map(m=>(m.name||'').trim())).filter(Boolean))].map(name=>({name,dose:''}));
   local.saveSettings(state.settings);
 }
-buildChips();renderAll();renderReg();showLastBackup();loadWeather();
+if(!S().v2){S().v2=true;S().city='here';saveSettings()}
+NS();
+buildChips();renderAll();renderReg();renderNotify();showLastBackup();loadWeather();
+setInterval(()=>{if(document.visibilityState==='visible')loadWeather()},30*60000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 document.addEventListener('visibilitychange',()=>{
