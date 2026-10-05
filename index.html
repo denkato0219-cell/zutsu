@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>頭痛メモ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="頭痛メモ">
+<meta name="theme-color" content="#EEF2F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121A22" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#1C2733; --muted:#5B6B7A; --line:#D3DCE4;
+  --accent:#2F6F8F; --accent-ink:#FFFFFF; --soft:#E1EAF0; --warn:#B4513F; --ok:#3F7D5C;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121A22; --surface:#1A242E; --ink:#E6EDF3; --muted:#93A3B2; --line:#2C3A47;
+    --accent:#6FB3D2; --accent-ink:#0E1820; --soft:#22303C; --warn:#E58A6F; --ok:#7CC29B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121A22; --surface:#1A242E; --ink:#E6EDF3; --muted:#93A3B2; --line:#2C3A47;
+  --accent:#6FB3D2; --accent-ink:#0E1820; --soft:#22303C; --warn:#E58A6F; --ok:#7CC29B;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:var(--bg);color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;
+  font-size:16px;line-height:1.6;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 120px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+h1{font-size:1.25rem;margin:0;font-weight:700;letter-spacing:.02em}
+select,input,textarea,button{font:inherit;color:inherit}
+select,input[type=text],input[type=number],input[type=datetime-local],textarea{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:44px}
+textarea{min-height:72px;resize:vertical}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+header select{width:auto;padding:6px 10px;min-height:38px}
+section{margin-top:28px}
+h2{font-size:1rem;margin:0 0 10px;font-weight:700}
+
+/* pressure hero */
+.sky{background:var(--surface);border-radius:18px;padding:18px 16px 10px;border:1px solid var(--line)}
+.now{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.now .p{font-size:2.6rem;font-weight:700;line-height:1}
+.now .p small{font-size:1rem;font-weight:500;color:var(--muted);margin-left:4px}
+.now .t{font-size:1.1rem;color:var(--muted)}
+.trend{margin-top:6px;font-size:.95rem}
+.trend b{font-weight:700}
+.risk{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:.9rem;font-weight:500;background:var(--soft)}
+.risk.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.risk.ok{color:var(--ok)}
+.chart{width:100%;overflow-x:auto;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto;min-width:320px}
+.note{font-size:.8rem;color:var(--muted);margin:6px 0 0}
+.offline{color:var(--muted);font-size:.92rem}
+
+/* ongoing */
+.ongoing{margin-top:16px;border-radius:16px;padding:14px 16px;background:var(--surface);border:2px solid var(--warn)}
+.ongoing p{margin:0 0 10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:44px;cursor:pointer;font-weight:500;background:var(--soft)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:transparent;color:var(--warn);border:1px solid var(--warn)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:0;
+  margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  padding:14px 28px;border-radius:999px;font-size:1.05rem;font-weight:700;box-shadow:0 6px 20px rgba(20,40,60,.25);z-index:5}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.stat{background:var(--surface);padding:12px 14px}
+.stat .v{font-size:1.4rem;font-weight:700}
+.stat .k{font-size:.82rem;color:var(--muted)}
+.medtable{width:100%;border-collapse:collapse;margin-top:12px;font-size:.92rem}
+.medtable th,.medtable td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.medtable th{font-weight:500;color:var(--muted);font-size:.82rem}
+.caution{margin-top:10px;font-size:.88rem;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn) 12%,transparent)}
+
+/* history */
+.hist{list-style:none;margin:0;padding:0}
+.hist li{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;padding:12px 14px 12px 18px;position:relative;cursor:pointer}
+.hist li::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:5px;border-radius:0 4px 4px 0;background:var(--c)}
+.hist .top{display:flex;justify-content:space-between;gap:8px;font-weight:500}
+.hist .sub{font-size:.88rem;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:24px 0}
+
+/* form sheet */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:10;overflow-y:auto;display:none;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.open{display:block}
+.sheet .wrap{padding-bottom:40px}
+.field{margin-top:22px}
+.field > label,.field > .lbl{display:block;font-weight:500;margin-bottom:8px}
+.headmap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.headmap svg{width:180px;height:auto;flex:none}
+.zone{fill:transparent;stroke:var(--line);stroke-width:1.5;cursor:pointer;transition:fill .15s}
+.zone.on{fill:color-mix(in srgb,var(--warn) 55%,transparent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:160px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.intensity{display:flex;align-items:center;gap:14px}
+.intensity output{font-size:2rem;font-weight:700;width:2.2ch;text-align:center}
+.intensity input{flex:1;accent-color:var(--warn);height:32px}
+.ilabel{font-size:.9rem;color:var(--muted)}
+.med{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;display:grid;gap:8px;grid-template-columns:1fr 6.5rem}
+.med .name{grid-column:1/-1;display:flex;gap:8px}
+.med .name input{flex:1}
+.med .x{border:0;background:transparent;color:var(--muted);font-size:1.3rem;width:44px;cursor:pointer}
+.mlabel{flex:1;font-weight:700;align-self:center;padding-left:4px}
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.pick{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:12px;padding:10px 14px;min-height:44px;cursor:pointer;font-weight:500;text-align:left}
+.pick small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
+.pick.other{border-style:dashed}
+.picker{position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:15;display:none;align-items:flex-end;justify-content:center}
+.picker.open{display:flex}
+.picker .panel{background:var(--bg);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.picker .pick{font-size:1.05rem;padding:14px 18px}
+.reglist{list-style:none;margin:0 0 10px;padding:0}
+.reglist li{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 14px;margin-bottom:6px}
+.reglist .nm{flex:1;font-weight:500}
+.reglist .ds{width:6.5rem}
+.reglist .ds input{min-height:38px;padding:6px 8px}
+.reglist .x{border:0;background:transparent;color:var(--muted);font-size:1.3rem;width:40px;min-height:40px;cursor:pointer}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--surface);padding:10px;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two label{font-size:.85rem;color:var(--muted)}
+.actions{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+.actions .primary{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));
+  background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;z-index:20;font-size:.92rem;display:none}
+.skyhead{display:flex;justify-content:space-between;align-items:center}
+.refresh{border:0;background:transparent;color:var(--accent);font-size:.85rem;padding:6px 0 6px 10px;cursor:pointer;min-height:36px}
+.sync{font-size:.78rem;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="main">
+  <header>
+    <div>
+      <h1>頭痛メモ</h1>
+      <div class="sync" id="sync">記録はこの端末に保存</div>
+    </div>
+    <select id="city" aria-label="気圧を見る地域"></select>
+  </header>
+
+  <div class="sky" id="sky">
+    <div class="offline">気圧データを読み込んでいます…</div>
+  </div>
+
+  <div id="ongoing"></div>
+
+  <section>
+    <h2>直近30日の振り返り</h2>
+    <div id="stats"></div>
+  </section>
+
+  <section>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 style="margin:0">記録</h2>
+      <button class="btn ghost" id="csv" hidden>CSVで書き出す</button>
+    </div>
+    <ul class="hist" id="hist" style="margin-top:10px"></ul>
+  </section>
+
+  <section>
+    <h2>薬の登録</h2>
+    <p class="note" style="margin:0 0 10px">ふだん使う薬を登録しておくと、飲んだときは選ぶだけで記録できます。量はいつもの量を入れておくと自動で入ります。</p>
+    <ul class="reglist" id="reglist"></ul>
+    <div class="med" style="grid-template-columns:1fr 6.5rem">
+      <input type="text" id="regName" placeholder="薬の名前（例：ロキソニン）" aria-label="登録する薬の名前">
+      <input type="text" id="regDose" placeholder="いつもの量" aria-label="いつもの量">
+      <button class="btn primary" id="regAdd" style="grid-column:1/-1">登録する</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>データの保管</h2>
+    <p class="note" style="margin:0 0 10px">記録はこの端末（iPhone・iPadそれぞれ）の中だけにあります。機種変更や万一に備えて、ときどきバックアップを保存してください。</p>
+    <div class="row">
+      <button class="btn" id="backup">バックアップを保存</button>
+      <button class="btn ghost" id="restoreBtn">バックアップから戻す</button>
+      <input type="file" id="restore" accept="application/json,.json" hidden>
+    </div>
+    <p class="note" id="lastBackup"></p>
+  </section>
+</div>
+
+<button class="btn primary fab" id="add">頭痛を記録する</button>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="ftitle">
+  <div class="wrap">
+    <header><h1 id="ftitle">頭痛を記録</h1><button class="btn ghost" id="cancel">閉じる</button></header>
+
+    <div class="field">
+      <label for="fStart">痛み始めた時刻</label>
+      <input type="datetime-local" id="fStart">
+    </div>
+
+    <div class="field">
+      <span class="lbl">痛む場所（いくつでも）</span>
+      <div class="headmap">
+        <svg viewBox="0 0 200 230" aria-label="頭の図（正面）">
+          <defs><clipPath id="hc"><ellipse cx="100" cy="112" rx="70" ry="88"/></clipPath></defs>
+          <g clip-path="url(#hc)">
+            <rect class="zone" data-a="頭頂部" x="20" y="20" width="160" height="42"/>
+            <rect class="zone" data-a="前頭部" x="58" y="62" width="84" height="38"/>
+            <rect class="zone" data-a="右こめかみ" x="20" y="62" width="38" height="66"/>
+            <rect class="zone" data-a="左こめかみ" x="142" y="62" width="38" height="66"/>
+            <rect class="zone" data-a="右目の奥" x="58" y="100" width="42" height="28"/>
+            <rect class="zone" data-a="左目の奥" x="100" y="100" width="42" height="28"/>
+          </g>
+          <ellipse cx="100" cy="112" rx="70" ry="88" fill="none" stroke="var(--muted)" stroke-width="2"/>
+          <ellipse cx="78" cy="114" rx="9" ry="5" fill="none" stroke="var(--muted)" stroke-width="1.5" pointer-events="none"/>
+          <ellipse cx="122" cy="114" rx="9" ry="5" fill="none" stroke="var(--muted)" stroke-width="1.5" pointer-events="none"/>
+          <path d="M100 124 L94 150 L104 150" fill="none" stroke="var(--muted)" stroke-width="1.5" pointer-events="none"/>
+          <path d="M84 170 Q100 180 116 170" fill="none" stroke="var(--muted)" stroke-width="1.5" pointer-events="none"/>
+          <text x="6" y="100" font-size="11" fill="var(--muted)">右</text>
+          <text x="184" y="100" font-size="11" fill="var(--muted)">左</text>
+        </svg>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fInt">痛みの強さ</label>
+      <div class="intensity">
+        <output id="fIntOut">5</output>
+        <input type="range" id="fInt" min="1" max="10" value="5">
+      </div>
+      <div class="ilabel" id="fIntLabel"></div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">飲んだ薬</span>
+      <div class="picks" id="formPicks"></div>
+      <div id="meds"></div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">今の状態</span>
+      <div class="seg" id="seg">
+        <button type="button" data-v="on">まだ続いている</button>
+        <button type="button" data-v="off">治った</button>
+      </div>
+      <div id="endWrap" style="margin-top:10px">
+        <label for="fEnd" class="ilabel">治った時刻</label>
+        <input type="datetime-local" id="fEnd">
+        <div class="ilabel" id="durLabel" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">そのときの天気</span>
+      <div class="two">
+        <div><label for="fP">気圧 (hPa)</label><input type="number" step="0.1" id="fP" inputmode="decimal"></div>
+        <div><label for="fT">気温 (℃)</label><input type="number" step="0.1" id="fT" inputmode="decimal"></div>
+      </div>
+      <p class="note" id="wNote"></p>
+    </div>
+
+    <div class="field">
+      <label for="fMemo">メモ（きっかけ・寝不足・天気など）</label>
+      <textarea id="fMemo"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn danger" id="del" hidden>削除</button>
+      <button class="btn primary" id="save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle">
+  <div class="panel">
+    <h2 id="pkTitle">どの薬を飲みましたか？</h2>
+    <p class="note" style="margin:-4px 0 12px">いまの時刻で記録します。時刻は後から編集できます。</p>
+    <div class="picks" id="pkList"></div>
+    <button class="btn ghost" id="pkCancel" style="width:100%">やめる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const AREAS=['頭頂部','前頭部','右こめかみ','左こめかみ','右目の奥','左目の奥','後頭部','首・肩','頭全体'];
+const COLORS=['#F4D58D','#F2C46B','#EEAE57','#E8964F','#DE7C4E','#CF6450','#BA4F57','#A1405D','#86365F','#6B2C5C'];
+const ILABEL=n=>n<=3?'軽い（普段どおり動ける）':n<=6?'中くらい（作業がつらい）':n<=8?'強い（休みたい）':'とても強い（動けない）';
+const CITIES={
+  kitakyushu:{name:'北九州',lat:33.8835,lon:130.8752},
+  fukuoka:{name:'福岡',lat:33.5902,lon:130.4017},
+  shimonoseki:{name:'下関',lat:33.9578,lon:130.9414},
+  oita:{name:'大分',lat:33.2382,lon:131.6126},
+  osaka:{name:'大阪',lat:34.6937,lon:135.5023},
+  tokyo:{name:'東京',lat:35.6812,lon:139.7671},
+  here:{name:'現在地',lat:null,lon:null}
+};
+const state={records:[],settings:{city:'kitakyushu'},weather:null,store:null,editing:null};
+
+/* ---------- time helpers ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const toInput=d=>{d=new Date(d);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const fromInput=v=>v?new Date(v).toISOString():null;
+const fmtDate=d=>{d=new Date(d);return `${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）`};
+const fmtTime=d=>{d=new Date(d);return `${d.getHours()}:${pad(d.getMinutes())}`};
+const fmtDur=min=>{if(min==null||isNaN(min))return '—';min=Math.round(min);const h=Math.floor(min/60),m=min%60;return h?`${h}時間${m?m+'分':''}`:`${m}分`};
+const durMin=r=>r.end?(new Date(r.end)-new Date(r.start))/60000:null;
+const newId=()=>'h_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* ---------- storage ---------- */
+const LKEY='headache-diary-v1',SKEY='headache-diary-settings';
+const local={
+  read(){try{return JSON.parse(localStorage.getItem(LKEY)||'[]')}catch(e){return[]}},
+  write(a){try{localStorage.setItem(LKEY,JSON.stringify(a))}catch(e){}},
+  async save(r){const a=this.read().filter(x=>x.id!==r.id);a.push(r);this.write(a);state.records=a;renderAll()},
+  async remove(id){const a=this.read().filter(x=>x.id!==id);this.write(a);state.records=a;renderAll()},
+  async saveSettings(s){try{localStorage.setItem(SKEY,JSON.stringify(s))}catch(e){}}
+};
+function startLocal(){
+  state.store=local;state.records=local.read();
+  try{Object.assign(state.settings,JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){}
+}
+/* ---------- weather ---------- */
+const WKEY='headache-weather-cache';
+function getPos(){return new Promise((ok,ng)=>{
+  if(!navigator.geolocation)return ng();
+  navigator.geolocation.getCurrentPosition(p=>ok({lat:+p.coords.latitude.toFixed(3),lon:+p.coords.longitude.toFixed(3)}),ng,{timeout:10000,maximumAge:3600e3});
+})}
+async function loadWeather(){
+  let c=CITIES[state.settings.city]||CITIES.kitakyushu;
+  if(state.settings.city==='here'){
+    try{const p=await getPos();c={name:'現在地',...p};state.settings.here=p;local.saveSettings(state.settings)}
+    catch(e){if(state.settings.here)c={name:'現在地',...state.settings.here};else{toast('位置情報が使えないため北九州で表示します');c=CITIES.kitakyushu}}
+  }
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=pressure_msl,temperature_2m&current=pressure_msl,temperature_2m&past_days=2&forecast_days=3&timezone=auto`;
+  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),10000);
+  try{
+    const res=await fetch(url,{signal:ctl.signal});clearTimeout(to);
+    if(!res.ok)throw 0;
+    const j=await res.json();
+    const off=(j.utc_offset_seconds||0)*1000;
+    const t=j.hourly.time.map(s=>Date.parse(s+':00Z')-off);
+    state.weather={t,p:j.hourly.pressure_msl,temp:j.hourly.temperature_2m,
+      cur:{p:j.current.pressure_msl,temp:j.current.temperature_2m},city:c.name,at:Date.now()};
+    try{localStorage.setItem(WKEY,JSON.stringify(state.weather))}catch(e){}
+  }catch(e){
+    try{const w=JSON.parse(localStorage.getItem(WKEY)||'null');if(w&&Date.now()-w.at<48*3600e3){w.stale=true;state.weather=w}}catch(_){}
+  }
+  renderSky();
+}
+function idxAt(ms){const w=state.weather;if(!w)return -1;let best=-1,bd=Infinity;
+  w.t.forEach((t,i)=>{const d=Math.abs(t-ms);if(d<bd){bd=d;best=i}});return bd<=90*60000?best:-1}
+function snapshotAt(ms){
+  const w=state.weather,i=idxAt(ms);if(i<0)return null;
+  const d6=i>=6?+(w.p[i]-w.p[i-6]).toFixed(1):null;
+  return {p:+w.p[i].toFixed(1),temp:+w.temp[i].toFixed(1),d6};
+}
+function maxDrop(ps){let m=0;for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length&&j<=i+6;j++)m=Math.max(m,ps[i]-ps[j]);return m}
+
+function renderSky(){
+  const w=state.weather,el=$('#sky');
+  if(!w){
+    el.innerHTML=`<div class="skyhead"><span class="offline">気象データを読み込めませんでした（電波を確認してください）。記録するときは気圧と気温を手で入力できます。</span><button class="refresh" id="rf">再読み込み</button></div>`;
+    $('#rf').onclick=loadWeather;
+    return;
+  }
+  const now=Date.now(),i=idxAt(now);
+  const d3=i>=3?w.p[i]-w.p[i-3]:0;
+  const fut=w.p.filter((_,k)=>w.t[k]>=now&&w.t[k]<=now+24*3600e3);
+  const drop=maxDrop(fut);
+  const lvl=drop>=6?['warn','この先24時間で大きく下がる見込み']:drop>=3?['warn','この先24時間で下がる見込み']:['ok','この先24時間は大きな変化なし'];
+  const arrow=d3<=-0.5?'↘ 下降中':d3>=0.5?'↗ 上昇中':'→ 横ばい';
+  const curP=w.stale&&i>=0?w.p[i]:w.cur.p, curT=w.stale&&i>=0?w.temp[i]:w.cur.temp;
+  const upd=new Date(w.at);
+  el.innerHTML=`
+    <div class="skyhead"><span class="sync">${esc(w.city)}・${w.stale?'前回取得の予報':'更新'} ${upd.getMonth()+1}/${upd.getDate()} ${fmtTime(upd)}</span><button class="refresh" id="rf">更新</button></div>
+    <div class="now"><span class="p">${curP.toFixed(0)}<small>hPa</small></span><span class="t">${curT.toFixed(1)}℃</span></div>
+    <div class="trend">${arrow}　3時間で <b>${d3>0?'+':''}${d3.toFixed(1)}</b> hPa</div>
+    <span class="risk ${lvl[0]}">${lvl[1]}（6時間で最大 −${drop.toFixed(1)} hPa）</span>
+    <div class="chart">${chartSVG(w,now)}</div>
+    <p class="note">海面気圧。前後24時間。赤い線は気圧が下がっている時間帯、点は頭痛の記録です。注意の目安は6時間で3hPa以上の低下としています。</p>`;
+  $('#rf').onclick=()=>{$('#rf').textContent='更新中…';loadWeather()};
+}
+function chartSVG(w,now){
+  const W=600,H=170,L=34,R=8,T=12,B=24;
+  const t0=now-24*3600e3,t1=now+24*3600e3;
+  const pts=w.t.map((t,i)=>({t,p:w.p[i]})).filter(o=>o.t>=t0&&o.t<=t1);
+  if(pts.length<2)return '';
+  let lo=Math.min(...pts.map(o=>o.p)),hi=Math.max(...pts.map(o=>o.p));
+  lo=Math.floor(lo-1);hi=Math.ceil(hi+1);
+  const x=t=>L+(t-t0)/(t1-t0)*(W-L-R),y=p=>T+(hi-p)/(hi-lo)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="気圧の推移">`;
+  const step=Math.max(1,Math.round((hi-lo)/4));
+  for(let v=lo;v<=hi;v+=step){s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-4}" y="${y(v)+4}" font-size="11" text-anchor="end" fill="var(--muted)">${v}</text>`}
+  // midnight markers
+  const d=new Date(t0);d.setHours(24,0,0,0);
+  for(let m=d.getTime();m<t1;m+=24*3600e3){s+=`<line x1="${x(m)}" x2="${x(m)}" y1="${T}" y2="${H-B}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${x(m)+3}" y="${H-8}" font-size="11" fill="var(--muted)">${new Date(m).getMonth()+1}/${new Date(m).getDate()}</text>`}
+  s+=`<path d="M${x(pts[0].t)},${H-B} ${pts.map(o=>`L${x(o.t).toFixed(1)},${y(o.p).toFixed(1)}`).join(' ')} L${x(pts[pts.length-1].t)},${H-B}Z" fill="var(--accent)" opacity=".12"/>`;
+  for(let i=1;i<pts.length;i++){
+    const back=pts[Math.max(0,i-3)],fall=back.p-pts[i].p>=1.5;
+    s+=`<line x1="${x(pts[i-1].t).toFixed(1)}" y1="${y(pts[i-1].p).toFixed(1)}" x2="${x(pts[i].t).toFixed(1)}" y2="${y(pts[i].p).toFixed(1)}" stroke="${fall?'var(--warn)':'var(--accent)'}" stroke-width="${fall?3.5:2.5}" stroke-linecap="round"/>`;
+  }
+  s+=`<line x1="${x(now)}" x2="${x(now)}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="1.5"/><text x="${x(now)+4}" y="${T+10}" font-size="11" fill="var(--ink)">いま</text>`;
+  state.records.filter(r=>{const t=+new Date(r.start);return t>=t0&&t<=now}).forEach(r=>{
+    const t=+new Date(r.start),i=idxAt(t);if(i<0)return;
+    s+=`<circle cx="${x(t)}" cy="${y(w.p[i])}" r="6" fill="${COLORS[(r.intensity||5)-1]}" stroke="var(--surface)" stroke-width="2"/>`;
+  });
+  return s+'</svg>';
+}
+
+/* ---------- render ---------- */
+function sorted(){return [...state.records].sort((a,b)=>new Date(b.start)-new Date(a.start))}
+function renderAll(){renderOngoing();renderStats();renderHistory();if(state.weather)renderSky()}
+function renderOngoing(){
+  const on=sorted().find(r=>!r.end),el=$('#ongoing');
+  if(!on){el.innerHTML='';return}
+  const mins=(Date.now()-new Date(on.start))/60000;
+  el.innerHTML=`<div class="ongoing"><p><b>続いている頭痛</b>　${fmtTime(on.start)}から ${fmtDur(mins)}・強さ ${on.intensity}</p>
+    <div class="row"><button class="btn primary" data-act="healed">治った</button><button class="btn" data-act="med">薬を飲んだ</button><button class="btn ghost" data-act="edit">編集</button></div></div>`;
+  el.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+    if(b.dataset.act==='healed'){const r={...on,end:new Date().toISOString(),updatedAt:Date.now()};await saveRec(r);toast(`治るまで ${fmtDur(durMin(r))}`)}
+    else if(b.dataset.act==='med')openPicker(on);
+    else openForm(on);
+  });
+}
+function renderStats(){
+  const since=Date.now()-30*864e5,rs=state.records.filter(r=>+new Date(r.start)>=since);
+  const el=$('#stats');
+  if(!rs.length){el.innerHTML='<p class="empty">直近30日の記録はまだありません。</p>';return}
+  const ended=rs.filter(r=>r.end),avgDur=ended.length?ended.reduce((s,r)=>s+durMin(r),0)/ended.length:null;
+  const avgInt=rs.reduce((s,r)=>s+(+r.intensity||0),0)/rs.length;
+  const medDays=new Set();rs.forEach(r=>(r.meds||[]).forEach(m=>{if(m.time)medDays.add(new Date(m.time).toDateString())}));
+  const withD=rs.filter(r=>r.d6!=null),drops=withD.filter(r=>r.d6<=-2);
+  const areaCount={};rs.forEach(r=>(r.areas||[]).forEach(a=>areaCount[a]=(areaCount[a]||0)+1));
+  const topArea=Object.entries(areaCount).sort((a,b)=>b[1]-a[1])[0];
+  // per medicine: uses and minutes from first dose to relief
+  const med={};state.records.forEach(r=>(r.meds||[]).forEach((m,i)=>{
+    const n=(m.name||'').trim();if(!n)return;med[n]=med[n]||{n:0,rel:[]};med[n].n++;
+    const first=(r.meds||[]).filter(x=>x.time).map(x=>+new Date(x.time)).sort((a,b)=>a-b)[0];
+    if(r.end&&m.time&&+new Date(m.time)===first){const d=(new Date(r.end)-new Date(m.time))/60000;if(d>=0)med[n].rel.push(d)}
+  }));
+  const medRows=Object.entries(med).sort((a,b)=>b[1].n-a[1].n).map(([n,o])=>`<tr><td>${esc(n)}</td><td>${o.n}回</td><td>${o.rel.length?fmtDur(o.rel.reduce((s,v)=>s+v,0)/o.rel.length):'—'}</td></tr>`).join('');
+  el.innerHTML=`<div class="stats">
+    <div class="stat"><div class="v">${rs.length}回</div><div class="k">頭痛があった回数</div></div>
+    <div class="stat"><div class="v">${avgInt.toFixed(1)}</div><div class="k">平均の強さ（10段階）</div></div>
+    <div class="stat"><div class="v">${fmtDur(avgDur)}</div><div class="k">治るまでの平均</div></div>
+    <div class="stat"><div class="v">${medDays.size}日</div><div class="k">薬を飲んだ日数</div></div>
+    <div class="stat"><div class="v">${withD.length?Math.round(drops.length/withD.length*100)+'%':'—'}</div><div class="k">気圧が下がっていた時の割合</div></div>
+    <div class="stat"><div class="v" style="font-size:1.1rem">${topArea?esc(topArea[0]):'—'}</div><div class="k">いちばん多い場所</div></div>
+  </div>
+  ${medRows?`<table class="medtable"><thead><tr><th>薬</th><th>使った回数</th><th>飲んでから治るまで</th></tr></thead><tbody>${medRows}</tbody></table>`:''}
+  ${medDays.size>=10?`<div class="caution">この30日で薬を飲んだ日が${medDays.size}日あります。鎮痛薬を月に10日以上使う状態が続くと、薬の使いすぎによる頭痛につながることがあります。一度かかりつけ医に相談してみてください。</div>`:''}
+  <p class="note">「気圧が下がっていた」は、痛み始めの6時間前から2hPa以上下がっていた記録です。</p>`;
+}
+function renderHistory(){
+  const el=$('#hist'),rs=sorted();
+  $('#csv').hidden=!rs.length;
+  if(!rs.length){el.innerHTML='<li class="empty" style="cursor:default">まだ記録がありません。下のボタンから最初の頭痛を記録できます。</li>';return}
+  el.innerHTML=rs.map(r=>{
+    const meds=(r.meds||[]).filter(m=>m.name).map(m=>`${esc(m.name)}${m.time?` ${fmtTime(m.time)}`:''}`).join('、');
+    const wx=r.p!=null?`${r.p}hPa${r.d6!=null?`（6h ${r.d6>0?'+':''}${r.d6}）`:''}`:'';
+    return `<li data-id="${esc(r.id)}" style="--c:${COLORS[(r.intensity||5)-1]}">
+      <div class="top"><span>${fmtDate(r.start)} ${fmtTime(r.start)}〜${r.end?fmtTime(r.end):'継続中'}</span><span>強さ ${r.intensity}</span></div>
+      <div class="sub">${r.end?'治るまで '+fmtDur(durMin(r)):'まだ続いている'}${(r.areas||[]).length?'・'+esc(r.areas.join('、')):''}</div>
+      ${meds?`<div class="sub">薬：${meds}</div>`:''}
+      ${wx?`<div class="sub">${wx}${r.temp!=null?' / '+r.temp+'℃':''}</div>`:''}
+    </li>`}).join('');
+  el.querySelectorAll('li[data-id]').forEach(li=>li.onclick=()=>openForm(state.records.find(r=>r.id===li.dataset.id)));
+}
+
+/* ---------- form ---------- */
+let fState={areas:new Set(),ongoing:true};
+function buildChips(){
+  $('#chips').innerHTML=['後頭部','首・肩','頭全体'].map(a=>`<button type="button" class="chip" data-a="${a}" aria-pressed="false">${a}</button>`).join('');
+  document.querySelectorAll('[data-a]').forEach(z=>z.addEventListener('click',()=>{
+    const a=z.dataset.a;fState.areas.has(a)?fState.areas.delete(a):fState.areas.add(a);syncAreas();
+  }));
+}
+function syncAreas(){
+  document.querySelectorAll('.zone').forEach(z=>z.classList.toggle('on',fState.areas.has(z.dataset.a)));
+  document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',fState.areas.has(c.dataset.a)));
+}
+function regMeds(){return state.settings.meds||[]}
+function medRow(m={},free){
+  const d=document.createElement('div');d.className='med';
+  const nameHtml=free||!m.name
+    ?`<input type="text" class="mn" placeholder="薬の名前" value="${esc(m.name||'')}" aria-label="薬の名前">`
+    :`<span class="mlabel">${esc(m.name)}</span><input type="hidden" class="mn" value="${esc(m.name)}">`;
+  d.innerHTML=`<div class="name">${nameHtml}<button type="button" class="x" aria-label="この薬を消す">×</button></div>
+    <input type="datetime-local" class="mt" value="${m.time?toInput(m.time):toInput(Date.now())}" aria-label="飲んだ時刻">
+    <input type="text" class="md" placeholder="量" value="${esc(m.dose||'')}" aria-label="量">`;
+  d.querySelector('.x').onclick=()=>d.remove();
+  $('#meds').appendChild(d);return d;
+}
+function pickButtons(onPick){
+  const btns=regMeds().map((m,i)=>`<button type="button" class="pick" data-i="${i}">${esc(m.name)}${m.dose?`<small>${esc(m.dose)}</small>`:''}</button>`).join('');
+  return {html:(btns||'<p class="note" style="margin:0 0 6px;width:100%">薬がまだ登録されていません。メイン画面の「薬の登録」から追加できます。</p>')
+    +'<button type="button" class="pick other" data-i="other">その他（名前を入力）</button>',
+    bind(root){root.querySelectorAll('.pick').forEach(b=>b.onclick=()=>onPick(b.dataset.i==='other'?null:regMeds()[+b.dataset.i]))}};
+}
+function renderFormPicks(){
+  const p=pickButtons(m=>{const r=m?medRow({name:m.name,dose:m.dose}):medRow({},true);
+    if(!m)r.querySelector('.mn').focus();toast(m?`${m.name} を追加しました`:'薬の名前を入力してください')});
+  $('#formPicks').innerHTML=p.html;p.bind($('#formPicks'));
+}
+function openPicker(rec){
+  const p=pickButtons(async m=>{
+    closePicker();
+    if(!m){openForm(rec,true);return}
+    const r={...rec,meds:[...(rec.meds||[]),{name:m.name,dose:m.dose||'',time:new Date().toISOString()}],updatedAt:Date.now()};
+    await saveRec(r);toast(`${m.name}（${fmtTime(Date.now())}）を記録しました`);
+  });
+  $('#pkList').innerHTML=p.html;p.bind($('#pkList'));
+  $('#picker').classList.add('open');
+}
+function closePicker(){$('#picker').classList.remove('open')}
+$('#pkCancel').onclick=closePicker;
+$('#picker').onclick=e=>{if(e.target.id==='picker')closePicker()};
+
+/* registry */
+function saveSettings(){local.saveSettings(state.settings)}
+function renderReg(){
+  const el=$('#reglist'),ms=regMeds();
+  el.innerHTML=ms.length?ms.map((m,i)=>`<li><span class="nm">${esc(m.name)}</span><span class="ds"><input type="text" value="${esc(m.dose||'')}" placeholder="量" data-i="${i}" aria-label="${esc(m.name)}のいつもの量"></span><button class="x" data-i="${i}" aria-label="${esc(m.name)}を登録から外す">×</button></li>`).join('')
+    :'<li style="justify-content:center;color:var(--muted)">まだ登録がありません</li>';
+  el.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{ms[+inp.dataset.i].dose=inp.value.trim();saveSettings();toast('量を更新しました')});
+  el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{const m=ms[+b.dataset.i];
+    if(!confirm(`${m.name} を登録から外しますか？（過去の記録は残ります）`))return;
+    ms.splice(+b.dataset.i,1);saveSettings();renderReg()});
+}
+$('#regAdd').onclick=()=>{
+  const name=$('#regName').value.trim(),dose=$('#regDose').value.trim();
+  if(!name){toast('薬の名前を入れてください');return}
+  const ms=state.settings.meds=regMeds();
+  if(ms.some(m=>m.name===name)){toast('同じ名前の薬はもう登録されています');return}
+  ms.push({name,dose});saveSettings();renderReg();
+  $('#regName').value='';$('#regDose').value='';toast(`${name} を登録しました`);
+};
+function setOngoing(v){fState.ongoing=v;
+  document.querySelectorAll('#seg button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v==='on')===v));
+  $('#endWrap').style.display=v?'none':'block';
+  if(!v&&!$('#fEnd').value)$('#fEnd').value=toInput(Date.now());updDur();
+}
+function updDur(){const s=$('#fStart').value,e=$('#fEnd').value;
+  $('#durLabel').textContent=s&&e?'治るまで '+fmtDur((new Date(e)-new Date(s))/60000):''}
+function setInt(v){$('#fInt').value=v;$('#fIntOut').textContent=v;$('#fIntOut').style.color=COLORS[v-1];$('#fIntLabel').textContent=ILABEL(+v)}
+function fillWeather(force){
+  const s=$('#fStart').value;if(!s)return;
+  const snap=snapshotAt(+new Date(s));
+  if(snap&&(force||!$('#fP').value)){$('#fP').value=snap.p;$('#fT').value=snap.temp;fState.d6=snap.d6;
+    $('#wNote').textContent=`${state.weather.city}の値を自動で入れました${snap.d6!=null?`（6時間前から ${snap.d6>0?'+':''}${snap.d6} hPa）`:''}。`}
+  else if(!snap&&!$('#fP').value){fState.d6=null;$('#wNote').textContent='自動で取れない時刻です。わかれば入力してください。'}
+}
+function openForm(rec,focusMed){
+  state.editing=rec||null;
+  $('#ftitle').textContent=rec?'記録を編集':'頭痛を記録';
+  $('#del').hidden=!rec;
+  fState={areas:new Set(rec?.areas||[]),ongoing:rec?!rec.end:true,d6:rec?.d6??null};
+  $('#fStart').value=toInput(rec?.start||Date.now());
+  $('#fEnd').value=rec?.end?toInput(rec.end):'';
+  setInt(rec?.intensity||5);
+  $('#meds').innerHTML='';(rec?.meds||[]).forEach(m=>medRow(m));
+  $('#fP').value=rec?.p??'';$('#fT').value=rec?.temp??'';$('#wNote').textContent='';
+  $('#fMemo').value=rec?.memo||'';
+  renderFormPicks();
+  syncAreas();setOngoing(fState.ongoing);if(!rec)fillWeather(true);
+  $('#sheet').classList.add('open');document.body.style.overflow='hidden';$('#sheet').scrollTop=0;
+  if(focusMed){const r=medRow({},true);setTimeout(()=>{r.scrollIntoView({block:'center'});r.querySelector('.mn').focus()},50)}
+}
+function closeForm(){$('#sheet').classList.remove('open');document.body.style.overflow=''}
+async function saveRec(r){
+  await local.save(r)
+}
+$('#save').onclick=async()=>{
+  const start=fromInput($('#fStart').value);if(!start){toast('痛み始めた時刻を入れてください');return}
+  const end=fState.ongoing?null:fromInput($('#fEnd').value);
+  if(end&&new Date(end)<new Date(start)){toast('治った時刻が始まりより前になっています');return}
+  const meds=[...document.querySelectorAll('#meds .med')].map(d=>({name:d.querySelector('.mn').value.trim(),time:fromInput(d.querySelector('.mt').value),dose:d.querySelector('.md').value.trim()})).filter(m=>m.name);
+  const num=v=>v===''?null:+v;
+  const r={id:state.editing?.id||newId(),start,end,areas:[...fState.areas],intensity:+$('#fInt').value,meds,
+    p:num($('#fP').value),temp:num($('#fT').value),d6:fState.d6??null,memo:$('#fMemo').value.trim(),updatedAt:Date.now()};
+  await saveRec(r);closeForm();toast('保存しました');
+};
+$('#del').onclick=async()=>{if(!state.editing||!confirm('この記録を削除しますか？'))return;
+  await local.remove(state.editing.id);closeForm();toast('削除しました')};
+$('#cancel').onclick=closeForm;
+$('#add').onclick=()=>openForm(null);
+$('#fInt').oninput=e=>setInt(e.target.value);
+$('#fStart').onchange=()=>{fillWeather(true);updDur()};
+$('#fEnd').onchange=updDur;
+document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>setOngoing(b.dataset.v==='on'));
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('#picker').classList.contains('open'))closePicker();else if($('#sheet').classList.contains('open'))closeForm()});
+
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200)}
+
+/* ---------- export / backup ---------- */
+async function deliver(filename,text,type){
+  const blob=new Blob([text],{type});
+  const file=new File([blob],filename,{type});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:filename});return true}
+    catch(e){if(e&&e.name==='AbortError')return false}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return true;
+}
+const today=()=>toInput(Date.now()).slice(0,10);
+$('#csv').onclick=async()=>{
+  const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=[['開始','終了','治るまで(分)','場所','強さ','薬','気圧hPa','気温℃','6時間の気圧変化','メモ'].join(',')];
+  sorted().forEach(r=>lines.push([toInput(r.start).replace('T',' '),r.end?toInput(r.end).replace('T',' '):'',r.end?Math.round(durMin(r)):'',
+    (r.areas||[]).join('・'),r.intensity,(r.meds||[]).map(m=>`${m.name}${m.dose?'('+m.dose+')':''} ${m.time?toInput(m.time).replace('T',' '):''}`).join(' / '),
+    r.p??'',r.temp??'',r.d6??'',r.memo||''].map(q).join(',')));
+  await deliver(`頭痛記録_${today()}.csv`,'\ufeff'+lines.join('\r\n'),'text/csv');
+};
+function showLastBackup(){const t=state.settings.lastBackup;
+  $('#lastBackup').textContent=t?`前回のバックアップ：${fmtDate(t)} ${fmtTime(t)}`:'まだバックアップしていません。'}
+$('#backup').onclick=async()=>{
+  const data=JSON.stringify({app:'zutsu-memo',version:1,exportedAt:new Date().toISOString(),records:state.records,settings:{city:state.settings.city,meds:regMeds()}});
+  if(await deliver(`頭痛メモ_バックアップ_${today()}.json`,data,'application/json')){
+    state.settings.lastBackup=Date.now();local.saveSettings(state.settings);showLastBackup();toast('バックアップを保存しました')}
+};
+$('#restoreBtn').onclick=()=>$('#restore').click();
+$('#restore').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const j=JSON.parse(await f.text());
+    if(!j||!Array.isArray(j.records))throw 0;
+    const map=new Map(state.records.map(r=>[r.id,r]));
+    let added=0;
+    j.records.forEach(r=>{if(!r||!r.id||!r.start)return;const cur=map.get(r.id);
+      if(!cur){added++;map.set(r.id,r)}else if((r.updatedAt||0)>(cur.updatedAt||0))map.set(r.id,r)});
+    if(j.settings&&Array.isArray(j.settings.meds)){const ms=state.settings.meds=regMeds();
+      j.settings.meds.forEach(m=>{if(m&&m.name&&!ms.some(x=>x.name===m.name))ms.push({name:m.name,dose:m.dose||''})});saveSettings();renderReg()}
+    local.write([...map.values()]);state.records=local.read();renderAll();
+    toast(`戻しました（新しく${added}件）`);
+  }catch(_){toast('このファイルは頭痛メモのバックアップではありません')}
+};
+
+/* ---------- init ---------- */
+startLocal();
+$('#city').innerHTML=Object.entries(CITIES).map(([k,c])=>`<option value="${k}">${c.name}</option>`).join('');
+$('#city').value=state.settings.city in CITIES?state.settings.city:'kitakyushu';
+$('#city').onchange=e=>{state.settings.city=e.target.value;local.saveSettings(state.settings);loadWeather()};
+if(!Array.isArray(state.settings.meds)){
+  state.settings.meds=[...new Set(state.records.flatMap(r=>(r.meds||[]).map(m=>(m.name||'').trim())).filter(Boolean))].map(name=>({name,dose:''}));
+  local.saveSettings(state.settings);
+}
+buildChips();renderAll();renderReg();showLastBackup();loadWeather();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  renderOngoing();
+  if(!state.weather||state.weather.stale||Date.now()-state.weather.at>30*60000)loadWeather();
+});
+setInterval(()=>{renderOngoing()},60000);
+})();
+</script>
+</body>
+</html>
