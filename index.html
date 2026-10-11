@@ -168,6 +168,20 @@ details.crit p{margin:4px 0}
 .pick.other{border-style:dashed}
 .picker{position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:15;display:none;align-items:flex-end;justify-content:center}
 .picker.open{display:flex}
+.tl svg{display:block;width:100%;height:auto}
+.tlist{list-style:none;margin:8px 0 0;padding:0}
+.tlist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.tlist .tt{font-weight:700;min-width:3.2em}
+.tlist .ti{flex:none;min-width:2.4em;text-align:center;border-radius:8px;color:#fff;font-weight:700;padding:0 6px}
+.tlist .tb{flex:1;font-size:.92rem}
+.tlist .x{border:0;background:transparent;color:var(--muted);font-size:1.2rem;width:36px;min-height:36px;cursor:pointer}
+.chip.act[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.chip.med[aria-pressed="true"]{background:#6B5BC4;border-color:#6B5BC4}
+.eff{width:100%;border-collapse:collapse;margin-top:8px;font-size:.92rem}
+.eff th,.eff td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.eff th{font-weight:500;color:var(--muted);font-size:.82rem}
+.eff .dn{color:var(--ok);font-weight:700}.eff .up{color:var(--warn);font-weight:700}
+.picker .panel.tall{max-height:92vh;overflow-y:auto}
 .picker .panel{background:var(--bg);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px))}
 .picker .pick{font-size:1.05rem;padding:14px 18px}
 .reglist{list-style:none;margin:0 0 10px;padding:0}
@@ -233,7 +247,20 @@ details.crit p{margin:4px 0}
       <h2 style="margin:0">記録</h2>
       <button class="btn ghost" id="csv" hidden>CSVで書き出す</button>
     </div>
+    <div class="chips" id="histFilter" style="margin-top:10px"></div>
     <ul class="hist" id="hist" style="margin-top:10px"></ul>
+  </section>
+
+  <section>
+    <h2>症状の種類</h2>
+    <p class="note" style="margin:0 0 10px">記録するときに選べる症状です。記録画面からも追加できます。</p>
+    <ul class="reglist" id="symList"></ul>
+  </section>
+
+  <section>
+    <h2>対処の種類</h2>
+    <p class="note" style="margin:0 0 10px">「いまの様子」で選べる、薬以外の対処です。</p>
+    <ul class="reglist" id="actList"></ul>
   </section>
 
   <section>
@@ -264,11 +291,11 @@ details.crit p{margin:4px 0}
   </section>
 </div>
 
-<button class="btn primary fab" id="add">頭痛を記録する</button>
+<button class="btn primary fab" id="add">症状を記録する</button>
 
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="ftitle">
   <div class="wrap">
-    <header><h1 id="ftitle">頭痛を記録</h1><button class="btn ghost" id="cancel">閉じる</button></header>
+    <header><h1 id="ftitle">症状を記録</h1><button class="btn ghost" id="cancel">閉じる</button></header>
 
     <div class="field">
       <label for="fStart">痛み始めた時刻</label>
@@ -276,7 +303,13 @@ details.crit p{margin:4px 0}
     </div>
 
     <div class="field">
-      <span class="lbl">痛む場所（いくつでも）</span>
+      <span class="lbl">症状（いくつでも）</span>
+      <div class="chips" id="symChips"></div>
+      <div class="row" style="margin-top:10px"><input type="text" id="symNew" placeholder="ほかの症状を追加（例：耳鳴り）" style="flex:1;width:auto" aria-label="追加する症状"><button class="btn" id="symAdd" type="button">追加</button></div>
+    </div>
+
+    <div class="field" id="areaField">
+      <span class="lbl">頭の痛む場所（いくつでも）</span>
       <div class="headmap">
         <svg viewBox="0 0 200 230" aria-label="頭の図（正面）">
           <defs><clipPath id="hc"><ellipse cx="100" cy="112" rx="70" ry="88"/></clipPath></defs>
@@ -301,12 +334,19 @@ details.crit p{margin:4px 0}
     </div>
 
     <div class="field">
-      <label for="fInt">痛みの強さ</label>
+      <label for="fInt">始まりのつらさ（強さ）</label>
       <div class="intensity">
         <output id="fIntOut">5</output>
         <input type="range" id="fInt" min="1" max="10" value="5">
       </div>
       <div class="ilabel" id="fIntLabel"></div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">経過（薬・対処のあとの強さなど）</span>
+      <div class="tl" id="fTl"></div>
+      <ul class="tlist" id="fTlist"></ul>
+      <button class="btn" id="fAddLog" type="button" style="margin-top:8px">経過を追加</button>
     </div>
 
     <div class="field">
@@ -358,6 +398,25 @@ details.crit p{margin:4px 0}
   </div>
 </div>
 
+<div class="picker" id="chk" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="panel tall">
+    <h2 id="cTitle">いまの様子</h2>
+    <div class="field" style="margin-top:8px"><label for="cTime">時刻</label><input type="datetime-local" id="cTime"></div>
+    <div class="field">
+      <label for="cInt">いまのつらさ</label>
+      <div class="intensity"><output id="cIntOut">5</output><input type="range" id="cInt" min="0" max="10" value="5"></div>
+      <div class="ilabel" id="cIntLabel"></div>
+      <label class="chkrow" id="cHealWrap"><input type="checkbox" id="cHealed">これで治った</label>
+    </div>
+    <div class="field"><span class="lbl">いまある症状</span><div class="chips" id="cSyms"></div></div>
+    <div class="field"><span class="lbl">したこと（いくつでも）</span><div class="chips" id="cActs"></div>
+      <div class="chips" id="cMeds" style="margin-top:8px"></div>
+      <p class="note">薬を選ぶと「飲んだ薬」にも記録されます。</p></div>
+    <div class="field"><label for="cNote">メモ</label><input type="text" id="cNote" placeholder="例：保冷剤を首に当てた"></div>
+    <div class="actions"><button class="btn ghost" id="cCancel">やめる</button><button class="btn primary" id="cSave">記録する</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -366,7 +425,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const AREAS=['頭頂部','前頭部','右こめかみ','左こめかみ','右目の奥','左目の奥','後頭部','首・肩','頭全体'];
 const COLORS=['#F4D58D','#F2C46B','#EEAE57','#E8964F','#DE7C4E','#CF6450','#BA4F57','#A1405D','#86365F','#6B2C5C'];
-const ILABEL=n=>n<=3?'軽い（普段どおり動ける）':n<=6?'中くらい（作業がつらい）':n<=8?'強い（休みたい）':'とても強い（動けない）';
+const colI=n=>n<=0?'#7CB58F':COLORS[Math.min(10,n)-1];
+const ILABEL=n=>n<=0?'なし（おさまっている）':n<=3?'軽い（普段どおり動ける）':n<=6?'中くらい（作業がつらい）':n<=8?'強い（休みたい）':'とても強い（動けない）';
 const CITIES={
   here:{name:'現在地',lat:null,lon:null},
   kitakyushu:{name:'北九州',lat:33.8835,lon:130.8752},
@@ -571,8 +631,8 @@ function daySummary(dayMs){
   // 自分の状態（前日の頭痛・続く服薬）
   const recY=state.records.filter(x=>{const t=+new Date(x.start);return t>=a-24*HOUR&&t<a});
   const ongoing=state.records.some(x=>!x.end&&+new Date(x.start)<b);
-  if(recY.length)add(1,'前の日にも頭痛があった');
-  else if(ongoing&&a<=Date.now())add(1,'頭痛が続いている');
+  if(recY.length)add(1,'前の日にも症状があった');
+  else if(ongoing&&a<=Date.now())add(1,'症状が続いている');
   const medDays=new Set();state.records.forEach(x=>(x.meds||[]).forEach(m=>{const t=+new Date(m.time);if(t>=a-3*24*HOUR&&t<a)medDays.add(new Date(t).toDateString())}));
   if(medDays.size>=2)add(1,`この3日で${medDays.size}日薬を飲んでいる`);
 
@@ -612,7 +672,7 @@ function renderSky(){
         <p>・暑さ（体感30℃〜1点、32℃〜2点、35℃〜3点）、冷え込み 1点、1日の寒暖差12℃以上 1点</p>
         <p>・湿度（蒸し暑い 2点、85%以上 1点、30%以下 1点）、日差し（UV指数6〜1点、8〜2点）、雷雨 1点</p>
         <p>・昨日との差（気圧 5hPa〜1点・8hPa〜2点、最高気温 5℃〜1点・7℃〜2点）</p>
-        <p>・自分の状態（前の日に頭痛 1点、3日で2日以上服薬 1点）</p>
+        <p>・自分の状態（前の日に何かの症状 1点、3日で2日以上服薬 1点）</p>
         <p style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center"><span>${pill(0)} 8点以上</span><span>${pill(1)} 5〜7点</span><span>${pill(2)} 3〜4点</span><span>${pill(3)} 1〜2点</span><span>${pill(4)} 0点</span></p>
       </details></div>`:''})()}`;
   $('#rf').onclick=()=>{$('#rf').textContent='更新中…';loadWeather()};
@@ -661,7 +721,7 @@ function buildChart(){
   s+=`<polyline points="${w.temp.map((v,i)=>`${X(i)},${Yt(v).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--temp)" stroke-width="2" stroke-linejoin="round"/>`;
   s+=`<line x1="${X(ni)}" x2="${X(ni)}" y1="4" y2="${tBot}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3"/><text x="${X(ni)+4}" y="${pTop-4}" font-size="11" fill="var(--ink)">いま</text>`;
   state.records.forEach(r=>{const i=idxAt(+new Date(r.start));if(i<0)return;
-    s+=`<circle cx="${X(i)}" cy="${Yp(w.p[i])}" r="6" fill="${COLORS[(r.intensity||5)-1]}" stroke="var(--surface)" stroke-width="2"/>`});
+    s+=`<circle cx="${X(i)}" cy="${Yp(w.p[i])}" r="6" fill="${colI(peakOf(r))}" stroke="var(--surface)" stroke-width="2"/>`});
   $('#chartInner').innerHTML=s+'</svg>';
   if(!chartInit||centerIdx==null){chartInit=true;scrollToIdx(ni)}
   else scrollToIdx(Math.min(n-1,centerIdx));
@@ -740,17 +800,21 @@ async function scheduleForecast(){
   saveSettings();scheduling=false;renderNotify();
   if(failed)toast('通知の予約に失敗しました（電波を確認してください）');
 }
-async function scheduleFollowup(r){
+async function scheduleFollowup(r,fromMs,didSomething){
   const n=NS();if(!n.topic||!n.followup||r.end)return;
-  const at=+new Date(r.start)+n.followup*HOUR;if(at<Date.now()+60000)return;
-  try{await ntfy('頭痛の様子はどうですか？',`${fmtTime(r.start)}に記録した頭痛から${n.followup}時間たちました。治っていたら「治った」を、まだ痛むなら強さや薬を記録しましょう。`,at,'face_with_head_bandage');
-    toast(`${n.followup}時間後に様子を確認します`)}
+  const base=fromMs||+new Date(r.start),hrs=didSomething?1:n.followup;
+  const at=base+hrs*HOUR;if(at<Date.now()+60000)return;
+  const msg=didSomething
+    ?`${fmtTime(base)}の薬・対処から1時間たちました。つらさがどう変わったか「いまの様子」で記録しましょう。治っていたら「治った」を。`
+    :`${fmtTime(base)}の記録から${n.followup}時間たちました。治っていたら「治った」を、まだつらいなら「いまの様子」で強さを記録しましょう。`;
+  try{await ntfy(didSomething?'効き目はどうですか？':'体調の様子はどうですか？',msg,at,'face_with_head_bandage');
+    toast(`${hrs}時間後に様子を確認します`)}
   catch(e){toast('様子確認の通知を予約できませんでした')}
 }
 function renderNotify(){
   const n=NS(),el=$('#notifyBody');
   if(!n.topic){
-    el.innerHTML=`<div class="card"><p style="margin:0 0 8px">頭痛が起こりそうな天気になる前と、頭痛を記録してから決まった時間がたったときに、iPhoneへ通知を送ります。通知は無料アプリ「ntfy」で受け取ります。</p>
+    el.innerHTML=`<div class="card"><p style="margin:0 0 8px">頭痛が起こりそうな天気になる前と、症状を記録してから決まった時間がたったときに、iPhoneへ通知を送ります。通知は無料アプリ「ntfy」で受け取ります。</p>
       <p class="note" style="margin:0 0 12px">天気の通知は、このアプリを開いたときに最大3日先まで予約されます。数日に1回は開いてください。</p>
       <button class="btn primary" id="nStart">通知を使う準備をする</button></div>`;
     $('#nStart').onclick=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);
@@ -777,7 +841,7 @@ function renderNotify(){
     ${chk('drop','気圧が下がる')}${chk('rise','気圧が上がる')}${chk('heat','暑さ（体感30℃以上）')}${chk('uv','強い日差し（UV指数6以上）')}
     <div class="field" style="margin-top:12px"><label for="nTh">気圧変化の目安（グラフと注意の表示にも使います）</label>
       <select id="nTh"><option value="2">6時間で2hPa（敏感）</option><option value="3">6時間で3hPa（標準）</option><option value="4">6時間で4hPa（大きいときだけ）</option></select></div>
-    <div class="field" style="margin-top:12px"><label for="nFu">頭痛を記録したあと、様子を確認する</label>
+    <div class="field" style="margin-top:12px"><label for="nFu">症状を記録したあと、様子を確認する</label>
       <select id="nFu"><option value="0">確認しない</option><option value="1">1時間後</option><option value="2">2時間後</option><option value="3">3時間後</option><option value="4">4時間後</option></select></div>
     <p class="note">予約済みの通知：${up.length}件${up.length?`（次：${absLabel(up[0].n)}ごろ ${nm(up[0].type)}）`:''}</p>
     <button class="btn ghost" id="nStop" style="margin-top:6px">通知をやめる</button>
@@ -800,11 +864,15 @@ function renderOngoing(){
   const on=sorted().find(r=>!r.end),el=$('#ongoing');
   if(!on){el.innerHTML='';return}
   const mins=(Date.now()-new Date(on.start))/60000;
-  el.innerHTML=`<div class="ongoing"><p><b>続いている頭痛</b>　${fmtTime(on.start)}から ${fmtDur(mins)}・強さ ${on.intensity}${mins>=60?'<br>いまの様子はどうですか？治っていたら「治った」を押してください。':''}</p>
-    <div class="row"><button class="btn primary" data-act="healed">治った</button><button class="btn" data-act="med">薬を飲んだ</button><button class="btn ghost" data-act="edit">編集</button></div></div>`;
+  const lastT=Math.max(...pointsOf(on).map(p=>p.t)),since=(Date.now()-lastT)/60000;
+  el.innerHTML=`<div class="ongoing"><p style="margin:0 0 4px"><b>続いている症状：${esc(symText(on))}</b><br>${fmtTime(on.start)}から ${fmtDur(mins)}・いまの強さ ${lastIntOf(on)}（最大 ${peakOf(on)}）</p>
+    <div class="tl">${tlSVG(on,true)}</div>
+    ${since>=45?`<p class="ilabel" style="margin:4px 0 8px">最後の記録から${fmtDur(since)}たちました。いまの様子を記録しませんか？</p>`:''}
+    <div class="row" style="margin-top:8px"><button class="btn primary" data-act="log">いまの様子</button><button class="btn" data-act="med">薬を飲んだ</button><button class="btn" data-act="healed">治った</button><button class="btn ghost" data-act="edit">編集</button></div></div>`;
   el.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
     if(b.dataset.act==='healed'){const r={...on,end:new Date().toISOString(),updatedAt:Date.now()};await saveRec(r);toast(`治るまで ${fmtDur(durMin(r))}`)}
-    else if(b.dataset.act==='med')openPicker(on);
+    else if(b.dataset.act==='log')openCheckin({rec:on,ctx:'banner'});
+    else if(b.dataset.act==='med')openCheckin({rec:on,ctx:'banner',preMed:true});
     else openForm(on);
   });
 }
@@ -813,7 +881,7 @@ function renderStats(){
   const el=$('#stats');
   if(!rs.length){el.innerHTML='<p class="empty">直近30日の記録はまだありません。</p>';return}
   const ended=rs.filter(r=>r.end),avgDur=ended.length?ended.reduce((s,r)=>s+durMin(r),0)/ended.length:null;
-  const avgInt=rs.reduce((s,r)=>s+(+r.intensity||0),0)/rs.length;
+  const avgInt=rs.reduce((s,r)=>s+peakOf(r),0)/rs.length;
   const medDays=new Set();rs.forEach(r=>(r.meds||[]).forEach(m=>{if(m.time)medDays.add(new Date(m.time).toDateString())}));
   const withD=rs.filter(r=>r.d6!=null),drops=withD.filter(r=>r.d6<=-2),rises=withD.filter(r=>r.d6>=2);
   const hot=rs.filter(r=>(r.app!=null&&r.app>=30)||(r.uv!=null&&r.uv>=6));
@@ -827,36 +895,182 @@ function renderStats(){
   }));
   const medRows=Object.entries(med).sort((a,b)=>b[1].n-a[1].n).map(([n,o])=>`<tr><td>${esc(n)}</td><td>${o.n}回</td><td>${o.rel.length?fmtDur(o.rel.reduce((s,v)=>s+v,0)/o.rel.length):'—'}</td></tr>`).join('');
   el.innerHTML=`<div class="stats">
-    <div class="stat"><div class="v">${rs.length}回</div><div class="k">頭痛があった回数</div></div>
-    <div class="stat"><div class="v">${avgInt.toFixed(1)}</div><div class="k">平均の強さ（10段階）</div></div>
+    <div class="stat" style="grid-column:1/-1"><div class="v" style="font-size:1.1rem">${(()=>{const c={};rs.forEach(r=>symsOf(r).forEach(x=>c[x]=(c[x]||0)+1));return Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} ${v}回`).join('・')})()}</div><div class="k">症状ごとの回数（記録は${rs.length}件）</div></div>
+    <div class="stat"><div class="v">${avgInt.toFixed(1)}</div><div class="k">いちばん強いときの平均</div></div>
     <div class="stat"><div class="v">${fmtDur(avgDur)}</div><div class="k">治るまでの平均</div></div>
     <div class="stat"><div class="v">${medDays.size}日</div><div class="k">薬を飲んだ日数</div></div>
     <div class="stat"><div class="v" style="font-size:1.1rem">${withD.length?`下降${drops.length}・上昇${rises.length}`:'—'}</div><div class="k">気圧が変化していた回数${withD.length?`（${withD.length}回中）`:''}</div></div>
     <div class="stat"><div class="v">${hot.length}回</div><div class="k">暑さ・強い日差しのとき</div></div>
-    <div class="stat" style="grid-column:1/-1"><div class="v" style="font-size:1.1rem">${topArea?esc(topArea[0]):'—'}</div><div class="k">いちばん多い場所</div></div>
+    <div class="stat"><div class="v" style="font-size:1.1rem">${topArea?esc(topArea[0]):'—'}</div><div class="k">頭痛でいちばん多い場所</div></div>
   </div>
   ${medRows?`<table class="medtable"><thead><tr><th>薬</th><th>使った回数</th><th>飲んでから治るまで</th></tr></thead><tbody>${medRows}</tbody></table>`:''}
+  ${(()=>{const E=Object.entries(effects()).filter(([k,o])=>o.n).sort((a,b)=>b[1].n-a[1].n);if(!E.length)return '';
+    return `<h3 style="font-size:.95rem;margin:18px 0 0">薬・対処のあと、つらさはどう変わった？</h3>
+    <table class="eff"><thead><tr><th>薬・対処</th><th>回数</th><th>次の記録での変化</th><th>何分後</th></tr></thead><tbody>${E.map(([k,o])=>{const d=avg(o.d),m=avg(o.min);
+      return `<tr><td>${o.kind==='med'?'💊 ':''}${esc(k)}</td><td>${o.n}回</td><td>${d==null?'—':`<span class="${d<0?'dn':d>0?'up':''}">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toFixed(1)}</span>`}</td><td>${m==null?'—':fmtDur(m)}</td></tr>`}).join('')}</tbody></table>
+    <p class="note">すべての記録から計算しています。薬や対処の直前の強さと、その後4時間以内の次の「いまの様子」の強さを比べています。同時にしたことは、それぞれに数えています。</p>`})()}
   ${medDays.size>=10?`<div class="caution">この30日で薬を飲んだ日が${medDays.size}日あります。鎮痛薬を月に10日以上使う状態が続くと、薬の使いすぎによる頭痛につながることがあります。一度かかりつけ医に相談してみてください。</div>`:''}
-  <p class="note">「気圧が変化していた」は痛み始めまでの6時間で2hPa以上、「暑さ・強い日差し」は体感30℃以上かUV指数6以上だった記録です。</p>`;
+  <p class="note">「気圧が変化していた」は症状が出るまでの6時間で2hPa以上、「暑さ・強い日差し」は体感30℃以上かUV指数6以上だった記録です。</p>`;
 }
 function renderHistory(){
   const el=$('#hist'),rs=sorted();
   $('#csv').hidden=!rs.length;
-  if(!rs.length){el.innerHTML='<li class="empty" style="cursor:default">まだ記録がありません。下のボタンから最初の頭痛を記録できます。</li>';return}
-  el.innerHTML=rs.map(r=>{
+  const used=[...new Set(rs.flatMap(symsOf))];
+  if(state.filter&&!used.includes(state.filter))state.filter=null;
+  $('#histFilter').innerHTML=used.length>1?['すべて',...used].map(x=>`<button type="button" class="chip" data-f="${esc(x)}" aria-pressed="${(state.filter||'すべて')===x}">${esc(x)}</button>`).join(''):'';
+  $('#histFilter').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{state.filter=b.dataset.f==='すべて'?null:b.dataset.f;renderHistory()});
+  const shown=state.filter?rs.filter(r=>symsOf(r).includes(state.filter)):rs;
+  if(!rs.length){el.innerHTML='<li class="empty" style="cursor:default">まだ記録がありません。下のボタンから最初の記録ができます。</li>';return}
+  el.innerHTML=shown.map(r=>{
     const meds=(r.meds||[]).filter(m=>m.name).map(m=>`${esc(m.name)}${m.time?` ${fmtTime(m.time)}`:''}`).join('、');
     const wx=r.p!=null?`${r.code!=null?WX(r.code,r.day)[0]+' ':''}${r.p}hPa${r.d6!=null?`（6h ${sgn(r.d6)}）`:''}`:'';
-    return `<li data-id="${esc(r.id)}" style="--c:${COLORS[(r.intensity||5)-1]}">
-      <div class="top"><span>${fmtDate(r.start)} ${fmtTime(r.start)}〜${r.end?fmtTime(r.end):'継続中'}</span><span>強さ ${r.intensity}</span></div>
+    const P=pointsOf(r),hasTl=P.length>2||(P.length===2&&!r.end)||actsOf(r).length;
+    return `<li data-id="${esc(r.id)}" style="--c:${colI(peakOf(r))}">
+      <div class="top"><span>${fmtDate(r.start)} ${fmtTime(r.start)}〜${r.end?fmtTime(r.end):'継続中'}</span><span>${P.length>1?P.map(p=>p.int).join('→'):'強さ '+r.intensity}</span></div>
+      <div style="font-weight:700;font-size:.95rem">${esc(symText(r))}</div>
       <div class="sub">${r.end?'治るまで '+fmtDur(durMin(r)):'まだ続いている'}${(r.areas||[]).length?'・'+esc(r.areas.join('、')):''}</div>
+      ${hasTl?`<div class="tl" style="margin:4px 0">${tlSVG(r,true)}</div>`:''}
       ${meds?`<div class="sub">薬：${meds}</div>`:''}
+      ${(()=>{const a=(r.log||[]).flatMap(e=>e.acts||[]);return a.length?`<div class="sub">対処：${esc([...new Set(a)].join('、'))}</div>`:''})()}
       ${wx?`<div class="sub">${wx}${r.temp!=null?' / '+r.temp+'℃':''}${r.app!=null?`（体感${Math.round(r.app)}℃）`:''}${r.uv!=null?` / UV${Math.round(r.uv)}`:''}</div>`:''}
     </li>`}).join('');
   el.querySelectorAll('li[data-id]').forEach(li=>li.onclick=()=>openForm(state.records.find(r=>r.id===li.dataset.id)));
 }
 
+/* ---------- timeline (経過) ---------- */
+const DEFAULT_ACTS=['冷やした','温めた','横になった','眠った','暗い部屋で休んだ','水分をとった','食事をとった','カフェインをとった','ストレッチ・マッサージ','トイレに行った','吐いた'];
+function regActs(){if(!Array.isArray(S().acts)){S().acts=[...DEFAULT_ACTS];saveSettings()}return S().acts}
+const tms=x=>+new Date(x);
+function pointsOf(r){
+  const P=[{t:tms(r.start),int:+r.intensity||0,kind:'start'}];
+  (r.log||[]).forEach(e=>{if(e.int!=null)P.push({t:tms(e.time),int:+e.int,kind:'log',e})});
+  if(r.end&&!P.some(p=>Math.abs(p.t-tms(r.end))<60000))P.push({t:tms(r.end),int:0,kind:'end'});
+  return P.sort((a,b)=>a.t-b.t);
+}
+function actsOf(r){
+  const A=[];
+  (r.log||[]).forEach(e=>(e.acts||[]).forEach(n=>A.push({t:tms(e.time),name:n,kind:'act'})));
+  (r.meds||[]).forEach(m=>{if(m.name&&m.time)A.push({t:tms(m.time),name:m.name,kind:'med'})});
+  return A.sort((a,b)=>a.t-b.t);
+}
+const peakOf=r=>Math.max(...pointsOf(r).map(p=>p.int));
+const lastIntOf=r=>{const P=pointsOf(r);return P[P.length-1].int};
+function tlSVG(r,mini){
+  const P=pointsOf(r),A=actsOf(r),now=Date.now();
+  const t0=P[0].t,last=Math.max(...P.map(p=>p.t),...A.map(a=>a.t),r.end?tms(r.end):now);
+  const t1=Math.max(last,t0+30*60000);
+  const W=600,H=mini?60:190,L=mini?4:26,R=mini?4:12,T=mini?6:14,B=mini?6:(A.length?62:24);
+  const X=t=>L+(t-t0)/(t1-t0)*(W-L-R),Y=v=>T+(10-v)/10*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="つらさの経過">`;
+  if(!mini){[0,5,10].forEach(v=>s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" font-size="11" text-anchor="end" fill="var(--muted)">${v}</text>`);
+    const span=t1-t0,step=span>12*HOUR?3*HOUR:span>4*HOUR?HOUR:span>90*60000?30*60000:15*60000;
+    for(let t=Math.ceil(t0/step)*step;t<=t1;t+=step)s+=`<text x="${X(t)}" y="${H-B+16}" font-size="11" text-anchor="middle" fill="var(--muted)">${fmtTime(t)}</text>`;}
+  A.forEach(a=>s+=`<line x1="${X(a.t)}" x2="${X(a.t)}" y1="${T}" y2="${H-B}" stroke="${a.kind==='med'?'#6B5BC4':'var(--accent)'}" stroke-width="${mini?1.5:2}" stroke-dasharray="3 3" opacity=".8"/>`);
+  s+=`<polyline points="${P.map(p=>`${X(p.t).toFixed(1)},${Y(p.int).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="${mini?2:2.5}" stroke-linejoin="round"/>`;
+  if(!r.end&&now>P[P.length-1].t){const lp=P[P.length-1];s+=`<line x1="${X(lp.t)}" y1="${Y(lp.int)}" x2="${X(Math.min(now,t1))}" y2="${Y(lp.int)}" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 4"/>`}
+  P.forEach(p=>s+=`<circle cx="${X(p.t)}" cy="${Y(p.int)}" r="${mini?3.5:6}" fill="${colI(p.int)}" stroke="var(--surface)" stroke-width="2"/>`);
+  if(!mini)A.forEach((a,i)=>{const row=i%3;s+=`<text x="${Math.min(W-R-2,Math.max(L,X(a.t)))}" y="${H-B+32+row*14}" font-size="11" text-anchor="${X(a.t)>W-90?'end':X(a.t)<L+40?'start':'middle'}" fill="${a.kind==='med'?'#6B5BC4':'var(--accent)'}">${a.kind==='med'?'💊':''}${esc(a.name.length>7?a.name.slice(0,7)+'…':a.name)}</text>`});
+  return s+'</svg>';
+}
+function effects(){
+  const m={};
+  state.records.forEach(r=>{const P=pointsOf(r);
+    actsOf(r).forEach(a=>{
+      const o=m[a.name]=m[a.name]||{n:0,d:[],min:[],kind:a.kind};o.n++;
+      const before=P.filter(p=>p.t<=a.t).pop(),after=P.find(p=>p.t>a.t&&p.t<=a.t+4*HOUR);
+      if(before&&after){o.d.push(after.int-before.int);o.min.push((after.t-a.t)/60000)}
+    })});
+  return m;
+}
+function renderActList(){
+  const L=regActs(),el=$('#actList');
+  el.innerHTML=L.map((x,i)=>`<li><span class="nm">${esc(x)}</span><button class="x" data-i="${i}" aria-label="${esc(x)}を一覧から外す">×</button></li>`).join('')
+    +`<li><input type="text" id="actNew" placeholder="対処を追加（例：アイマスク）" style="flex:1;min-height:38px;padding:6px 8px" aria-label="追加する対処"><button class="btn" id="actAdd" style="min-height:38px;padding:6px 14px">追加</button></li>`;
+  el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{const x=L[+b.dataset.i];
+    if(!confirm(`「${x}」を一覧から外しますか？（過去の記録は残ります）`))return;L.splice(+b.dataset.i,1);saveSettings();renderActList()});
+  $('#actAdd').onclick=()=>{const x=$('#actNew').value.trim();if(!x)return;
+    if(L.includes(x)){toast('もう登録されています');return}L.push(x);saveSettings();renderActList();toast(`「${x}」を追加しました`)};
+}
+
+/* ---------- check-in sheet ---------- */
+let cState=null;
+function setCInt(v){$('#cInt').value=v;$('#cIntOut').textContent=v;$('#cIntOut').style.color=colI(+v);$('#cIntLabel').textContent=ILABEL(+v)}
+function chipSet(el,list,sel,cls){
+  el.innerHTML=list.map(x=>`<button type="button" class="chip ${cls}" data-v="${esc(x)}" aria-pressed="${sel.has(x)}">${cls==='med'?'💊 ':''}${esc(x)}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const v=b.dataset.v;sel.has(v)?sel.delete(v):sel.add(v);b.setAttribute('aria-pressed',sel.has(v))});
+}
+// opts: {rec, entry, ctx:'banner'|'form', preMed:bool}
+function openCheckin(opts){
+  const r=opts.rec,e=opts.entry;
+  const lastLog=[...(r.log||[])].sort((a,b)=>tms(a.time)-tms(b.time)).pop();
+  cState={...opts,syms:new Set(e?.syms||lastLog?.syms||symsOf(r)),acts:new Set(e?.acts||[]),meds:new Set()};
+  $('#cTitle').textContent=e?'経過を編集':opts.preMed?'薬を飲んだ':'いまの様子';
+  $('#cTime').value=toInput(e?.time||Date.now());
+  setCInt(e?.int??lastIntOf(r));
+  $('#cHealed').checked=false;$('#cHealWrap').style.display=(!e&&!r.end)?'':'none';
+  $('#cNote').value=e?.note||'';
+  chipSet($('#cSyms'),[...new Set([...regSyms(),...cState.syms])],cState.syms,'sym');
+  chipSet($('#cActs'),[...new Set([...regActs(),...cState.acts])],cState.acts,'act');
+  const meds=regMeds().map(m=>m.name);
+  $('#cMeds').style.display=e?'none':'';
+  if(!e)chipSet($('#cMeds'),meds,cState.meds,'med');
+  if(opts.preMed&&!meds.length)toast('薬がまだ登録されていません。メイン画面の「薬の登録」から追加できます');
+  $('#chk').classList.add('open');$('#chk .panel').scrollTop=opts.preMed?$('#cActs').offsetTop-80:0;
+}
+function closeCheckin(){$('#chk').classList.remove('open');cState=null}
+$('#cInt').oninput=e=>{setCInt(e.target.value);if(+e.target.value>0)$('#cHealed').checked=false};
+$('#cHealed').onchange=e=>{if(e.target.checked)setCInt(0)};
+$('#cCancel').onclick=closeCheckin;
+$('#chk').onclick=e=>{if(e.target.id==='chk')closeCheckin()};
+$('#cSave').onclick=async()=>{
+  if(!cState)return;
+  const time=fromInput($('#cTime').value)||new Date().toISOString();
+  const r=cState.rec;
+  if(tms(time)<tms(r.start)){toast('始まりより前の時刻になっています');return}
+  const entry={id:cState.entry?.id||newId(),time,int:+$('#cInt').value,syms:[...cState.syms],acts:[...cState.acts],note:$('#cNote').value.trim()};
+  const medObjs=[...cState.meds].map(n=>{const m=regMeds().find(x=>x.name===n)||{};return{name:n,dose:m.dose||'',time}});
+  const healed=$('#cHealed').checked;
+  if(cState.ctx==='form'){
+    fState.log=(fState.log||[]).filter(x=>x.id!==entry.id);fState.log.push(entry);
+    medObjs.forEach(m=>medRow(m));
+    entry.syms.forEach(x=>fState.syms.add(x));renderSymChips();
+    if(healed){setOngoing(false);$('#fEnd').value=toInput(time);updDur()}
+    closeCheckin();renderFormTl();toast('経過を追加しました（保存を忘れずに）');return;
+  }
+  const nr={...r,log:[...(r.log||[]).filter(x=>x.id!==entry.id),entry],meds:[...(r.meds||[]),...medObjs],
+    syms:[...new Set([...symsOf(r),...entry.syms])],updatedAt:Date.now()};
+  if(healed)nr.end=time;
+  closeCheckin();await saveRec(nr);
+  toast(healed?`治るまで ${fmtDur(durMin(nr))}`:'記録しました');
+  if(!healed)scheduleFollowup(nr,tms(time),medObjs.length||entry.acts.length);
+};
+
 /* ---------- form ---------- */
-let fState={areas:new Set(),ongoing:true};
+let fState={areas:new Set(),ongoing:true,syms:new Set(['頭痛'])};
+const DEFAULT_SYMS=['頭痛','吐き気','嘔吐','腹痛','下痢','めまい','だるさ','肩こり・首こり','光がまぶしい','音がつらい'];
+function regSyms(){if(!Array.isArray(S().symptoms)){S().symptoms=[...DEFAULT_SYMS];saveSettings()}return S().symptoms}
+const symsOf=r=>(r&&Array.isArray(r.syms)&&r.syms.length)?r.syms:['頭痛'];
+const symText=r=>symsOf(r).join('・');
+function renderSymChips(){
+  const all=[...new Set([...regSyms(),...fState.syms])];
+  $('#symChips').innerHTML=all.map(x=>`<button type="button" class="chip sym" data-s="${esc(x)}" aria-pressed="${fState.syms.has(x)}">${esc(x)}</button>`).join('');
+  $('#symChips').querySelectorAll('.sym').forEach(b=>b.onclick=()=>{const x=b.dataset.s;
+    fState.syms.has(x)?fState.syms.delete(x):fState.syms.add(x);b.setAttribute('aria-pressed',fState.syms.has(x));syncAreaField()});
+  syncAreaField();
+}
+function syncAreaField(){$('#areaField').style.display=fState.syms.has('頭痛')?'':'none'}
+$('#symAdd').onclick=()=>{const x=$('#symNew').value.trim();if(!x)return;
+  const L=regSyms();if(!L.includes(x)){L.push(x);saveSettings();renderSymList()}
+  fState.syms.add(x);$('#symNew').value='';renderSymChips()};
+function renderSymList(){
+  const L=regSyms(),el=$('#symList');
+  el.innerHTML=L.map((x,i)=>`<li><span class="nm">${esc(x)}</span><button class="x" data-i="${i}" aria-label="${esc(x)}を一覧から外す">×</button></li>`).join('')
+    +`<li><input type="text" id="symNew2" placeholder="症状を追加" style="flex:1;min-height:38px;padding:6px 8px" aria-label="追加する症状"><button class="btn" id="symAdd2" style="min-height:38px;padding:6px 14px">追加</button></li>`;
+  el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{const x=L[+b.dataset.i];
+    if(!confirm(`「${x}」を一覧から外しますか？（過去の記録は残ります）`))return;L.splice(+b.dataset.i,1);saveSettings();renderSymList()});
+  $('#symAdd2').onclick=()=>{const x=$('#symNew2').value.trim();if(!x)return;
+    if(L.includes(x)){toast('もう登録されています');return}L.push(x);saveSettings();renderSymList();toast(`「${x}」を追加しました`)};
+}
 function buildChips(){
   $('#chips').innerHTML=['後頭部','首・肩','頭全体'].map(a=>`<button type="button" class="chip" data-a="${a}" aria-pressed="false">${a}</button>`).join('');
   document.querySelectorAll('[data-a]').forEach(z=>z.addEventListener('click',()=>{
@@ -942,9 +1156,9 @@ function fillWeather(force){
 }
 function openForm(rec,focusMed){
   state.editing=rec||null;
-  $('#ftitle').textContent=rec?'記録を編集':'頭痛を記録';
+  $('#ftitle').textContent=rec?'記録を編集':'症状を記録';
   $('#del').hidden=!rec;
-  fState={areas:new Set(rec?.areas||[]),ongoing:rec?!rec.end:true,wx:rec?{d6:rec.d6??null,app:rec.app??null,hum:rec.hum??null,uv:rec.uv??null,code:rec.code??null,day:rec.day??null}:null};
+  fState={areas:new Set(rec?.areas||[]),syms:new Set(rec?symsOf(rec):['頭痛']),ongoing:rec?!rec.end:true,log:(rec?.log||[]).map(e=>({...e})),wx:rec?{d6:rec.d6??null,app:rec.app??null,hum:rec.hum??null,uv:rec.uv??null,code:rec.code??null,day:rec.day??null}:null};
   $('#fStart').value=toInput(rec?.start||Date.now());
   $('#fEnd').value=rec?.end?toInput(rec.end):'';
   setInt(rec?.intensity||5);
@@ -952,10 +1166,32 @@ function openForm(rec,focusMed){
   $('#fP').value=rec?.p??'';$('#fT').value=rec?.temp??'';$('#wNote').textContent='';
   $('#fMemo').value=rec?.memo||'';
   renderFormPicks();
-  syncAreas();setOngoing(fState.ongoing);if(!rec)fillWeather(true);
+  renderSymChips();syncAreas();setOngoing(fState.ongoing);if(!rec)fillWeather(true);
+  renderFormTl();
   $('#sheet').classList.add('open');document.body.style.overflow='hidden';$('#sheet').scrollTop=0;
   if(focusMed){const r=medRow({},true);setTimeout(()=>{r.scrollIntoView({block:'center'});r.querySelector('.mn').focus()},50)}
 }
+function formRec(){
+  const meds=[...document.querySelectorAll('#meds .med')].map(d=>({name:d.querySelector('.mn').value.trim(),time:fromInput(d.querySelector('.mt').value),dose:d.querySelector('.md').value.trim()})).filter(m=>m.name);
+  return {start:fromInput($('#fStart').value)||new Date().toISOString(),end:fState.ongoing?null:fromInput($('#fEnd').value),
+    intensity:+$('#fInt').value,log:fState.log||[],meds,syms:[...fState.syms]};
+}
+function renderFormTl(){
+  const r=formRec(),L=[...r.log].sort((a,b)=>tms(a.time)-tms(b.time));
+  $('#fTl').innerHTML=(L.length||r.meds.length)?tlSVG(r):'';
+  $('#fTlist').innerHTML=L.length?L.map(e=>`<li data-id="${esc(e.id)}"><span class="tt">${fmtTime(e.time)}</span><span class="ti" style="background:${colI(e.int)}">${e.int}</span>
+    <span class="tb">${[...r.meds.filter(m=>Math.abs(tms(m.time)-tms(e.time))<60000).map(m=>'💊'+m.name),...(e.acts||[]),...(e.syms||[]).map(x=>'['+x+']')].map(esc).join('・')||'—'}${e.note?`<br><span class="ilabel">${esc(e.note)}</span>`:''}</span>
+    <button type="button" class="x" aria-label="この経過を消す">×</button></li>`).join('')
+    :'<li class="ilabel" style="border:0">まだ経過がありません。薬や対処のあと、つらさがどう変わったかを記録できます。</li>';
+  $('#fTlist').querySelectorAll('li[data-id]').forEach(li=>{
+    const e=fState.log.find(x=>x.id===li.dataset.id);
+    li.querySelector('.x').onclick=ev=>{ev.stopPropagation();if(!confirm('この経過を消しますか？'))return;fState.log=fState.log.filter(x=>x.id!==e.id);renderFormTl()};
+    li.onclick=()=>openCheckin({rec:formRec(),entry:e,ctx:'form'});
+  });
+}
+$('#fAddLog').onclick=()=>openCheckin({rec:formRec(),ctx:'form'});
+$('#meds').addEventListener('change',renderFormTl);
+$('#fInt').addEventListener('change',renderFormTl);
 function closeForm(){$('#sheet').classList.remove('open');document.body.style.overflow=''}
 async function saveRec(r){
   await local.save(r)
@@ -968,7 +1204,9 @@ $('#save').onclick=async()=>{
   const num=v=>v===''?null:+v;
   const wx=fState.wx||{};
   const isNew=!state.editing;
-  const r={id:state.editing?.id||newId(),start,end,areas:[...fState.areas],intensity:+$('#fInt').value,meds,
+  if(!fState.syms.size){toast('症状を1つ以上選んでください');return}
+  if(end&&(fState.log||[]).some(e=>tms(e.time)>tms(end)+60000)&&!confirm('治った時刻より後の経過があります。このまま保存しますか？'))return;
+  const r={id:state.editing?.id||newId(),start,end,log:fState.log||[],syms:[...fState.syms],areas:fState.syms.has('頭痛')?[...fState.areas]:[],intensity:+$('#fInt').value,meds,
     p:num($('#fP').value),temp:num($('#fT').value),d6:wx.d6??null,app:wx.app??null,hum:wx.hum??null,uv:wx.uv??null,code:wx.code??null,day:wx.day??null,
     memo:$('#fMemo').value.trim(),updatedAt:Date.now()};
   await saveRec(r);closeForm();toast('保存しました');
@@ -982,7 +1220,7 @@ $('#fInt').oninput=e=>setInt(e.target.value);
 $('#fStart').onchange=()=>{fillWeather(true);updDur()};
 $('#fEnd').onchange=updDur;
 document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>setOngoing(b.dataset.v==='on'));
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('#picker').classList.contains('open'))closePicker();else if($('#sheet').classList.contains('open'))closeForm()});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('#chk').classList.contains('open'))closeCheckin();else if($('#picker').classList.contains('open'))closePicker();else if($('#sheet').classList.contains('open'))closeForm()});
 
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200)}
 
@@ -1000,16 +1238,17 @@ async function deliver(filename,text,type){
 const today=()=>toInput(Date.now()).slice(0,10);
 $('#csv').onclick=async()=>{
   const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
-  const lines=[['開始','終了','治るまで(分)','場所','強さ','薬','天気','気圧hPa','6時間の気圧変化','気温℃','体感℃','湿度%','UV指数','メモ'].join(',')];
+  const lines=[['開始','終了','治るまで(分)','症状','頭の場所','始まりの強さ','最大の強さ','経過','薬','天気','気圧hPa','6時間の気圧変化','気温℃','体感℃','湿度%','UV指数','メモ'].join(',')];
   sorted().forEach(r=>lines.push([toInput(r.start).replace('T',' '),r.end?toInput(r.end).replace('T',' '):'',r.end?Math.round(durMin(r)):'',
-    (r.areas||[]).join('・'),r.intensity,(r.meds||[]).map(m=>`${m.name}${m.dose?'('+m.dose+')':''} ${m.time?toInput(m.time).replace('T',' '):''}`).join(' / '),
+    symText(r),(r.areas||[]).join('・'),r.intensity,peakOf(r),
+    [...(r.log||[])].sort((a,b)=>tms(a.time)-tms(b.time)).map(e=>`${toInput(e.time).slice(11)} 強さ${e.int}${(e.acts||[]).length?' '+e.acts.join('・'):''}${(e.syms||[]).length?' ['+e.syms.join('・')+']':''}${e.note?' ('+e.note+')':''}`).join(' / '),(r.meds||[]).map(m=>`${m.name}${m.dose?'('+m.dose+')':''} ${m.time?toInput(m.time).replace('T',' '):''}`).join(' / '),
     r.code!=null?WX(r.code,r.day)[1]:'',r.p??'',r.d6??'',r.temp??'',r.app??'',r.hum??'',r.uv??'',r.memo||''].map(q).join(',')));
-  await deliver(`頭痛記録_${today()}.csv`,'\ufeff'+lines.join('\r\n'),'text/csv');
+  await deliver(`体調記録_${today()}.csv`,'\ufeff'+lines.join('\r\n'),'text/csv');
 };
 function showLastBackup(){const t=state.settings.lastBackup;
   $('#lastBackup').textContent=t?`前回のバックアップ：${fmtDate(t)} ${fmtTime(t)}`:'まだバックアップしていません。'}
 $('#backup').onclick=async()=>{
-  const data=JSON.stringify({app:'zutsu-memo',version:1,exportedAt:new Date().toISOString(),records:state.records,settings:{city:state.settings.city,meds:regMeds()}});
+  const data=JSON.stringify({app:'zutsu-memo',version:1,exportedAt:new Date().toISOString(),records:state.records,settings:{city:state.settings.city,meds:regMeds(),symptoms:regSyms(),acts:regActs()}});
   if(await deliver(`頭痛メモ_バックアップ_${today()}.json`,data,'application/json')){
     state.settings.lastBackup=Date.now();local.saveSettings(state.settings);showLastBackup();toast('バックアップを保存しました')}
 };
@@ -1025,6 +1264,8 @@ $('#restore').onchange=async e=>{
       if(!cur){added++;map.set(r.id,r)}else if((r.updatedAt||0)>(cur.updatedAt||0))map.set(r.id,r)});
     if(j.settings&&Array.isArray(j.settings.meds)){const ms=state.settings.meds=regMeds();
       j.settings.meds.forEach(m=>{if(m&&m.name&&!ms.some(x=>x.name===m.name))ms.push({name:m.name,dose:m.dose||''})});saveSettings();renderReg()}
+    if(j.settings&&Array.isArray(j.settings.acts)){const L=regActs();j.settings.acts.forEach(x=>{if(x&&!L.includes(x))L.push(x)});saveSettings();renderActList()}
+    if(j.settings&&Array.isArray(j.settings.symptoms)){const L=regSyms();j.settings.symptoms.forEach(x=>{if(x&&!L.includes(x))L.push(x)});saveSettings();renderSymList()}
     local.write([...map.values()]);state.records=local.read();renderAll();
     toast(`戻しました（新しく${added}件）`);
   }catch(_){toast('このファイルは頭痛メモのバックアップではありません')}
@@ -1041,7 +1282,9 @@ if(!Array.isArray(state.settings.meds)){
 }
 if(!S().v2){S().v2=true;S().city='here';saveSettings()}
 NS();
-buildChips();renderAll();renderReg();renderNotify();showLastBackup();loadWeather();
+buildChips();regSyms();
+if(!S().symV3){const L=regSyms();[['嘔吐','吐き気'],['下痢','腹痛']].forEach(([x,after])=>{if(!L.includes(x)){const i=L.indexOf(after);L.splice(i<0?L.length:i+1,0,x)}});S().symV3=true;saveSettings()}
+regActs();renderActList();renderSymList();renderAll();renderReg();renderNotify();showLastBackup();loadWeather();
 setInterval(()=>{if(document.visibilityState==='visible')loadWeather()},30*60000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
